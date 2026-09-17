@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Ashfall Narcotic / Opioid Dream Post-Processing Shader
+// Activates under strong narcotic / opioid influence.
+
+uniform sampler2D SCREEN_TEXTURE;
+uniform highp float NarcoticIntensity; // 0.0 to 1.0
+
+void fragment() {
+    highp vec2 coord = FRAGCOORD.xy * SCREEN_PIXEL_SIZE.xy;
+
+    // Gentle wave distortion (floating / dreamy sensation)
+    highp float wave = sin(coord.y * 10.0 + TIME * 1.5) * 0.005 * NarcoticIntensity;
+    highp vec2 distCoord = coord + vec2(wave, 0.0);
+
+    // Chromatic aberration (dreamlike color fringing)
+    highp float shift = 0.007 * NarcoticIntensity;
+    highp float r = zTextureSpec(SCREEN_TEXTURE, distCoord + vec2(shift, 0.0)).r;
+    highp float g = zTextureSpec(SCREEN_TEXTURE, distCoord).g;
+    highp float b = zTextureSpec(SCREEN_TEXTURE, distCoord - vec2(shift, 0.0)).b;
+    highp vec3 col = vec3(r, g, b);
+
+    // Soft warm tint
+    highp vec3 warmTint = vec3(1.04, 0.98, 0.92);
+    col *= warmTint;
+
+    COLOR = vec4(col, 1.0);
+}

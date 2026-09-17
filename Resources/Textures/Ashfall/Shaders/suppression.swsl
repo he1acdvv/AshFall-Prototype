@@ -1,0 +1,35 @@
+// Ashfall Combat Suppression & Fly-by Post-Processing Shader
+// Activates dynamically when taking sustained near-miss fire.
+
+uniform sampler2D SCREEN_TEXTURE;
+uniform highp float SuppressionIntensity; // 0.0 to 1.0
+
+void fragment() {
+    highp vec2 coord = FRAGCOORD.xy * SCREEN_PIXEL_SIZE.xy;
+    highp vec2 centerOffset = coord - vec2(0.5);
+    highp float aspect = SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x;
+    centerOffset.x *= aspect;
+    highp float dist = length(centerOffset);
+
+    // Peripheral chromatic aberration under heavy suppression
+    highp vec2 aberDir = centerOffset * SuppressionIntensity * 0.015;
+    highp float r = zTextureSpec(SCREEN_TEXTURE, coord + aberDir).r;
+    highp float g = zTextureSpec(SCREEN_TEXTURE, coord).g;
+    highp float b = zTextureSpec(SCREEN_TEXTURE, coord - aberDir).b;
+    highp vec3 col = vec3(r, g, b);
+
+    // Tunnel-vision vignette: narrows viewport when suppressed
+    highp float vigRadius = 0.85 - (SuppressionIntensity * 0.40);
+    highp float vigSoftness = 0.35;
+    highp float vignette = smoothstep(vigRadius, vigRadius - vigSoftness, dist);
+
+    // Darken screen edges based on suppression intensity
+    col *= clamp(vignette, 0.15, 1.0);
+
+    // Mild desaturation of suppressed peripheral vision
+    highp float desat = clamp(SuppressionIntensity * 0.45 * (1.0 - vignette), 0.0, 1.0);
+    highp float gray = zGrayscale(col);
+    col = mix(col, vec3(gray), desat);
+
+    COLOR = vec4(col, 1.0);
+}

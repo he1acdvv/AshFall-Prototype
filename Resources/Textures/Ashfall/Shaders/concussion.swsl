@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Ashfall Concussion Head Trauma Post-Processing Shader
+// Activates dynamically when suffering head concussion / blast trauma.
+
+uniform sampler2D SCREEN_TEXTURE;
+uniform highp float ConcussionIntensity; // 0.0 to 1.0
+
+void fragment() {
+    highp vec2 coord = FRAGCOORD.xy * SCREEN_PIXEL_SIZE.xy;
+    highp vec2 centerOffset = coord - vec2(0.5);
+    highp float aspect = SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x;
+    centerOffset.x *= aspect;
+    highp float dist = length(centerOffset);
+
+    // Dizziness wobble
+    highp float wobble = sin(TIME * 2.0) * 0.006 * ConcussionIntensity;
+    highp vec2 wobbledCoord = coord + vec2(wobble * (centerOffset.y), wobble * (centerOffset.x));
+
+    // Double vision / blur separation
+    highp float blurDist = 0.008 * ConcussionIntensity;
+    highp vec4 col1 = zTextureSpec(SCREEN_TEXTURE, wobbledCoord + vec2(blurDist, 0.0));
+    highp vec4 col2 = zTextureSpec(SCREEN_TEXTURE, wobbledCoord - vec2(blurDist, 0.0));
+    highp vec4 colBase = zTextureSpec(SCREEN_TEXTURE, wobbledCoord);
+    highp vec3 col = (colBase.rgb * 0.5) + (col1.rgb * 0.25) + (col2.rgb * 0.25);
+
+    // Dark tunnel vignette
+    highp float vigRadius = 0.85 - (ConcussionIntensity * 0.50);
+    highp float vigSoftness = 0.35 + (ConcussionIntensity * 0.10);
+    highp float vignette = smoothstep(vigRadius, vigRadius - vigSoftness, dist);
+
+    col *= clamp(vignette, 0.10, 1.0);
+
+    COLOR = vec4(col, colBase.a);
+}
