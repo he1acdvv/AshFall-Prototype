@@ -70,7 +70,8 @@ public sealed partial class HypoxiaOverlaySystem : EntitySystem
 
         if (TryComp<DamageableComponent>(player, out var damageable))
         {
-            if (damageable.Damage.DamageDict.TryGetValue("Asphyxiation", out var asphyxDamage) && asphyxDamage > 0)
+            var damage = _damageable.GetAllDamage((player, damageable));
+            if (damage.DamageDict.TryGetValue("Asphyxiation", out var asphyxDamage) && asphyxDamage > 0)
             {
                 // Full intensity reached at 80 asphyxiation damage
                 calculatedIntensity = Math.Clamp(asphyxDamage.Float() / 80f, 0f, 1f);

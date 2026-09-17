@@ -2,3 +2,23 @@
   id: AshfallAgony
   kind: source
   path: "/Textures/Ashfall/Shaders/agony.swsl"
+
+- type: shader
+  id: AshfallConcussion
+  kind: source
+  path: "/Textures/Ashfall/Shaders/concussion.swsl"
+
+- type: shader
+  id: AshfallHypoxia
+  kind: source
+  path: "/Textures/Ashfall/Shaders/hypoxia.swsl"
+
+- type: shader
+  id: AshfallNarcotic
+  kind: source
+  path: "/Textures/Ashfall/Shaders/narcotic.swsl"
+
+- type: shader
+  id: AshfallSuppression
+  kind: source
+  path: "/Textures/Ashfall/Shaders/suppression.swsl"

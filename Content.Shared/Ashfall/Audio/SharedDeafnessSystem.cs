@@ -7,7 +7,8 @@ using Robust.Shared.Timing;
 
 namespace Content.Shared.Ashfall.Audio;
 
-public sealed partial class SharedDeafnessSystem : EntitySystem
+[Virtual]
+public partial class SharedDeafnessSystem : EntitySystem
 {
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private InventorySystem _inventory = default!;

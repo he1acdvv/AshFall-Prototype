@@ -2,6 +2,7 @@
 
 using Content.Client.Overlays;
 using Content.Shared.Body.Components;
+using Content.Shared.Body.Systems;
 using Content.Shared.Chemistry.EntitySystems;
 using Content.Shared.Damage;
 using Content.Shared.Damage.Components;
@@ -17,6 +18,8 @@ public sealed partial class BloodlossOverlaySystem : EntitySystem
     [Dependency] private IPlayerManager _playerMan = default!;
     [Dependency] private IOverlayManager _overlayMan = default!;
     [Dependency] private DamageableSystem _damageable = default!;
+    [Dependency] private BloodstreamSystem _bloodstream = default!;
+    [Dependency] private SharedSolutionContainerSystem _solutionContainer = default!;
 
     private BloodlossOverlay _overlay = default!;
     private float _targetIntensity;
@@ -70,17 +73,18 @@ public sealed partial class BloodlossOverlaySystem : EntitySystem
 
         if (TryComp<BloodstreamComponent>(player, out var stream))
         {
-            // BloodLevel is networked (1.0 = normal blood level).
-            // Desaturation begins below 65% blood (0.65), hitting full grayscale at <= 20% (0.20)
-            if (stream.BloodLevel < 0.65f)
+            if (_solutionContainer.TryGetSolution(player, BloodstreamComponent.DefaultBloodSolutionName, out _, out _)
+                && _bloodstream.GetBloodLevel((player, stream)) is var bloodLevel
+                && bloodLevel < 0.65f)
             {
-                calculatedIntensity = Math.Clamp((0.65f - stream.BloodLevel) / (0.65f - 0.20f), 0f, 1f);
+                calculatedIntensity = Math.Clamp((0.65f - bloodLevel) / (0.65f - 0.20f), 0f, 1f);
             }
         }
 
         if (TryComp<DamageableComponent>(player, out var damageable))
         {
-            if (damageable.Damage.DamageDict.TryGetValue("Bloodloss", out var bloodlossDamage) && bloodlossDamage > 0)
+            var damage = _damageable.GetAllDamage((player, damageable));
+            if (damage.DamageDict.TryGetValue("Bloodloss", out var bloodlossDamage) && bloodlossDamage > 0)
             {
                 var dmgIntensity = Math.Clamp(bloodlossDamage.Float() / 80f, 0f, 1f);
                 calculatedIntensity = MathF.Max(calculatedIntensity, dmgIntensity);
