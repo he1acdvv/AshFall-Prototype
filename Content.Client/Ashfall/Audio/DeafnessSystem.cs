@@ -21,6 +21,9 @@ public sealed partial class DeafnessSystem : EntitySystem
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private SharedAudioSystem _audioSystem = default!;
 
+    private const float BaseTinnitusGain = 0.65f;
+    private const float FadeDuration = 2.0f;
+
     private float _originalVolume = 0.5f;
     private (EntityUid Entity, AudioComponent Component)? _tinnitusStream;
 
@@ -81,22 +84,38 @@ public sealed partial class DeafnessSystem : EntitySystem
                 new SoundPathSpecifier("/Audio/Effects/tinnitus.ogg"),
                 Filter.Local(),
                 false,
-                AudioParams.Default.WithVolume(1.5f).WithLoop(true));
+                AudioParams.Default.WithVolume(SharedAudioSystem.GainToVolume(BaseTinnitusGain)).WithLoop(true));
             deaf.AudioStarted = _tinnitusStream != null;
         }
 
-        // Dampen audio heavily when deafened; smoothly fade back in during the final 1.5 seconds
-        float targetVolume;
-        if (timeLeft > 1.5f)
+        // Smooth fade calculations
+        float masterVolume;
+        if (timeLeft > FadeDuration)
         {
-            targetVolume = 0.05f * _originalVolume;
+            masterVolume = 0.05f * _originalVolume;
+            if (_tinnitusStream != null)
+            {
+                _audioSystem.SetVolume(_tinnitusStream.Value.Entity, SharedAudioSystem.GainToVolume(BaseTinnitusGain), _tinnitusStream.Value.Component);
+            }
         }
         else
         {
-            var fraction = 1.0f - (timeLeft / 1.5f);
-            targetVolume = MathHelper.Lerp(0.05f * _originalVolume, _originalVolume, fraction);
+            // Progress goes from 1.0 (start of fade) down to 0.0 (end of effect)
+            var progress = Math.Clamp(timeLeft / FadeDuration, 0f, 1f);
+
+            // Tinnitus sound fades smoothly to silence
+            var tinnitusGain = BaseTinnitusGain * (progress * progress);
+            var tinnitusVol = tinnitusGain > 0.005f ? SharedAudioSystem.GainToVolume(tinnitusGain) : float.NegativeInfinity;
+            if (_tinnitusStream != null)
+            {
+                _audioSystem.SetVolume(_tinnitusStream.Value.Entity, tinnitusVol, _tinnitusStream.Value.Component);
+            }
+
+            // Master volume smoothly returns back to normal
+            var masterFactor = 1.0f - (progress * progress);
+            masterVolume = MathHelper.Lerp(0.05f * _originalVolume, _originalVolume, masterFactor);
         }
 
-        _audio.SetMasterGain(Math.Clamp(targetVolume, 0f, _originalVolume));
+        _audio.SetMasterGain(Math.Clamp(masterVolume, 0f, _originalVolume));
     }
 }
