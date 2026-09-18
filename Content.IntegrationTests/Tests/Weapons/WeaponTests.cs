@@ -41,15 +41,26 @@ public sealed class WeaponTests : InteractionTest
         Assert.That(startAmmo, Is.GreaterThan(0), "Mosin was spawned with no ammo!");
         Assert.That(wieldComp.Wielded, Is.False, "Mosin was spawned wielded!");
 
-        // Ashfall: Unwielded firing is permitted with recoil consequences. Test wield interaction and firing.
+        // 1. Ashfall: Unwielded firing is permitted and discharges ammo with recoil consequences.
+        await AttemptShoot(urist);
+        var unwieldedAmmo = gunSystem.GetAmmoCount(mosinEnt);
+        Assert.That(unwieldedAmmo, Is.EqualTo(startAmmo - 1), "Mosin failed to discharge ammo when fired unwielded!");
+
+        // 2. Test wielding interaction and wielded firing with a fresh weapon.
+        var wieldMosinNet = await PlaceInHands(SniperMosin);
+        var wieldMosinEnt = ToServer(wieldMosinNet);
+        var wieldMosinAmmo = gunSystem.GetAmmoCount(wieldMosinEnt);
+        var freshWieldComp = Comp<WieldableComponent>(wieldMosinNet);
+
+        await Pair.RunSeconds(2f);
         await UseInHand();
 
-        Assert.That(wieldComp.Wielded, Is.True, "Mosin failed to wield when interacted with!");
+        Assert.That(freshWieldComp.Wielded, Is.True, "Mosin failed to wield when interacted with!");
 
         await AttemptShoot(urist);
-        var updatedAmmo = gunSystem.GetAmmoCount(mosinEnt);
+        var updatedAmmo = gunSystem.GetAmmoCount(wieldMosinEnt);
 
-        Assert.That(updatedAmmo, Is.EqualTo(startAmmo - 1), "Mosin failed to discharge appropriate amount of ammo!");
+        Assert.That(updatedAmmo, Is.EqualTo(wieldMosinAmmo - 1), "Mosin failed to discharge appropriate amount of ammo!");
         Assert.That(damageSystem.GetTotalDamage(ToServer(urist)),
             Is.GreaterThan(FixedPoint2.Zero),
             "Mosin was fired but urist sustained no damage!");

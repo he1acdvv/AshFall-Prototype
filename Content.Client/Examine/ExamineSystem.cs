@@ -239,7 +239,7 @@ namespace Content.Client.Examine
             if (knowTarget)
             {
                 var itemName = Identity.Name(target, EntityManager, player);
-                var labelMessage = FormattedMessage.FromMarkupPermissive($"[bold]{itemName}[/bold]");
+                var labelMessage = FormattedMessage.FromMarkupPermissive($"[bold]{FormattedMessage.EscapeText(itemName)}[/bold]");
                 var label = new RichTextLabel();
                 label.SetMessage(labelMessage);
                 hBox.AddChild(label);

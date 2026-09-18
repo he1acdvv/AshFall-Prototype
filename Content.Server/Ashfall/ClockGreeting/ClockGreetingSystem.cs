@@ -34,7 +34,8 @@ public sealed partial class ClockGreetingSystem : EntitySystem
             return;
 
         var now = DateTime.UtcNow.AddHours(EarthTimeOffsetHours);
-        var gameDate = new DateTime(GameYear, now.Month, now.Day, now.Hour, now.Minute, now.Second);
+        var gameDay = Math.Min(now.Day, DateTime.DaysInMonth(GameYear, now.Month));
+        var gameDate = new DateTime(GameYear, now.Month, gameDay, now.Hour, now.Minute, now.Second);
         var shift = _timing.CurTime - _ticker.RoundStartTimeSpan;
         RaiseNetworkEvent(new ClockGreetingMessage(gameDate, shift), ev.Player);
     }

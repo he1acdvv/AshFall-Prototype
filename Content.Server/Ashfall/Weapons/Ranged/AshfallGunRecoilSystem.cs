@@ -83,7 +83,7 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
     private void HandleRecoilAndDrop(Entity<GunComponent> gun, EntityUid user)
     {
         var isTwoHanded = TryComp<WieldableComponent>(gun, out var wieldable);
-        var isWielded = wieldable?.Wielded ?? false;
+        var isWielded = !isTwoHanded || (wieldable?.Wielded ?? false);
 
         var skillLevel = _knowledge.GetKnowledgeLevel(user, ShootingKnowledgeSystem.ShootingKnowledge);
         var isUnskilled = skillLevel <= 0;

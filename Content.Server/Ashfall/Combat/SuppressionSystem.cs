@@ -65,7 +65,7 @@ public sealed partial class SuppressionSystem : EntitySystem
         var prevLevel = comp.Level;
         comp.Level = Math.Clamp(comp.Level + amount, 0f, 1f);
 
-        if (comp.Level > 0.6f && prevLevel <= 0.6f)
+        if (comp.Level > 0.6f || prevLevel > 0.6f)
         {
             _movement.RefreshMovementSpeedModifiers(uid);
         }
@@ -119,7 +119,7 @@ public sealed partial class SuppressionSystem : EntitySystem
             var prev = supp.Level;
             supp.Level = MathF.Max(0f, supp.Level - supp.DecayRate * frameTime);
 
-            if (prev > 0.6f && supp.Level <= 0.6f)
+            if (prev > 0.6f || supp.Level > 0.6f)
             {
                 _movement.RefreshMovementSpeedModifiers(sUid);
             }
