@@ -48,7 +48,7 @@ public class ChatSearchBox : PanelContainer
             StyleClasses = { StyleClassChatSearchLineEdit }
         };
         SearchInput.OnTextChanged += OnTextChanged;
-        SearchInput.OnKeyBindDown += OnKeyBindDown;
+        SearchInput.OnKeyBindDown += OnSearchKeyBindDown;
         container.AddChild(SearchInput);
 
         _closeButton = new Button
@@ -66,7 +66,7 @@ public class ChatSearchBox : PanelContainer
         OnSearchChanged?.Invoke(SearchInput.Text);
     }
 
-    private void OnKeyBindDown(GUIBoundKeyEventArgs args)
+    private void OnSearchKeyBindDown(GUIBoundKeyEventArgs args)
     {
         if (args.Function == EngineKeyFunctions.TextReleaseFocus)
         {
@@ -95,6 +95,6 @@ public class ChatSearchBox : PanelContainer
         if (!disposing)
             return;
         SearchInput.OnTextChanged -= OnTextChanged;
-        SearchInput.OnKeyBindDown -= OnKeyBindDown;
+        SearchInput.OnKeyBindDown -= OnSearchKeyBindDown;
     }
 }
