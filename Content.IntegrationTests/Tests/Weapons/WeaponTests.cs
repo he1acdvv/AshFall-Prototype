@@ -1,4 +1,4 @@
-﻿using Content.IntegrationTests.Tests.Interaction;
+using Content.IntegrationTests.Tests.Interaction;
 using Content.Shared.Damage.Components;
 using Content.Shared.Damage.Systems;
 using Content.Shared.FixedPoint;
@@ -41,22 +41,13 @@ public sealed class WeaponTests : InteractionTest
         Assert.That(startAmmo, Is.GreaterThan(0), "Mosin was spawned with no ammo!");
         Assert.That(wieldComp.Wielded, Is.False, "Mosin was spawned wielded!");
 
-        await AttemptShoot(urist, false); // should fail due to not being wielded
-        var updatedAmmo = gunSystem.GetAmmoCount(mosinEnt);
-
-        Assert.That(updatedAmmo,
-            Is.EqualTo(startAmmo),
-            "Mosin discharged ammo when the weapon should not have fired!");
-        Assert.That(damageSystem.GetTotalDamage(ToServer(urist)),
-            Is.EqualTo(FixedPoint2.Zero),
-            "Urist took damage when the weapon should not have fired!");
-
+        // Ashfall: Unwielded firing is permitted with recoil consequences. Test wield interaction and firing.
         await UseInHand();
 
         Assert.That(wieldComp.Wielded, Is.True, "Mosin failed to wield when interacted with!");
 
         await AttemptShoot(urist);
-        updatedAmmo = gunSystem.GetAmmoCount(mosinEnt);
+        var updatedAmmo = gunSystem.GetAmmoCount(mosinEnt);
 
         Assert.That(updatedAmmo, Is.EqualTo(startAmmo - 1), "Mosin failed to discharge appropriate amount of ammo!");
         Assert.That(damageSystem.GetTotalDamage(ToServer(urist)),
