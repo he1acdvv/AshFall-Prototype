@@ -31,21 +31,20 @@ public sealed partial class CameraRecoilSystem : SharedCameraRecoilSystem
 
     public override void KickCamera(EntityUid uid, Vector2 recoil, CameraRecoilComponent? component = null)
     {
-        if (_intensity == 0)
-            return;
-
         if (!Resolve(uid, ref component, false))
             return;
 
-        recoil *= _intensity;
+        // Powerful screen shake: always provide strong recoil kick regardless of accessibility slider
+        var effectiveIntensity = Math.Max(1.6f, _intensity * 1.6f);
+        recoil *= effectiveIntensity;
 
-        // Use really bad math to "dampen" kicks when we're already kicked.
+        const float maxKick = 2.5f;
         var existing = component.CurrentKick.Length();
-        var dampen = existing / KickMagnitudeMax;
-        component.CurrentKick += recoil * (1 - dampen);
+        var dampen = existing / maxKick;
+        component.CurrentKick += recoil * (1 - Math.Clamp(dampen, 0f, 0.8f));
 
-        if (component.CurrentKick.Length() > KickMagnitudeMax)
-            component.CurrentKick = component.CurrentKick.Normalized() * KickMagnitudeMax;
+        if (component.CurrentKick.Length() > maxKick)
+            component.CurrentKick = component.CurrentKick.Normalized() * maxKick;
 
         component.LastKickTime = 0;
     }

@@ -37,7 +37,7 @@ public partial class SharedDeafnessSystem : EntitySystem
         return false;
     }
 
-    public bool TryDeafen(EntityUid uid, TimeSpan duration, bool ignoreProtection = false)
+    public bool TryDeafen(EntityUid uid, TimeSpan duration, bool ignoreProtection = false, bool showPopup = true)
     {
         if (duration <= TimeSpan.Zero)
             return false;
@@ -57,7 +57,7 @@ public partial class SharedDeafnessSystem : EntitySystem
             Dirty(uid, comp);
         }
 
-        if (isNew && _net.IsServer)
+        if (isNew && showPopup && _net.IsServer)
         {
             _popup.PopupEntity(Loc.GetString("gun-deafened-ringing"), uid, uid, PopupType.MediumCaution);
         }
