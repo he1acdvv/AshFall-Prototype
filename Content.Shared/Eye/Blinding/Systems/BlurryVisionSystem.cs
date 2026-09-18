@@ -29,6 +29,12 @@ public sealed partial class BlurryVisionSystem : EntitySystem
         {
             if (blurry.BlurEndTime != null && curTime >= blurry.BlurEndTime.Value)
             {
+                if (!HasComp<BlindableComponent>(uid))
+                {
+                    RemCompDeferred<BlurryVisionComponent>(uid);
+                    continue;
+                }
+
                 blurry.BlurEndTime = null;
                 UpdateBlurMagnitude(uid);
             }
