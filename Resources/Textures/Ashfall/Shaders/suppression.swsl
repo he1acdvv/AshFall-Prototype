@@ -21,10 +21,10 @@ void fragment() {
     // Tunnel-vision vignette: narrows viewport when suppressed
     highp float vigRadius = 0.85 - (SuppressionIntensity * 0.40);
     highp float vigSoftness = 0.35;
-    highp float vignette = smoothstep(vigRadius, vigRadius - vigSoftness, dist);
+    highp float vignette = 1.0 - smoothstep(vigRadius - vigSoftness, vigRadius, dist);
 
     // Darken screen edges based on suppression intensity
-    col *= clamp(vignette, 0.15, 1.0);
+    col *= mix(1.0, clamp(vignette, 0.15, 1.0), SuppressionIntensity);
 
     // Mild desaturation of suppressed peripheral vision
     highp float desat = clamp(SuppressionIntensity * 0.45 * (1.0 - vignette), 0.0, 1.0);

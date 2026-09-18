@@ -75,10 +75,10 @@ public sealed partial class DeafnessSystem : SharedDeafnessSystem
             return;
         }
 
-        if (!deaf.AudioStarted)
+        if (_tinnitusStream == null)
         {
-            deaf.AudioStarted = true;
             _tinnitusStream = _audioSystem.PlayPredicted(new SoundPathSpecifier("/Audio/Effects/tinnitus.ogg", AudioParams.Default.WithVolume(2f).WithLoop(true)), player, player);
+            deaf.AudioStarted = _tinnitusStream != null;
         }
 
         // Dampen audio heavily when deafened; smoothly fade back in during the final 1.5 seconds

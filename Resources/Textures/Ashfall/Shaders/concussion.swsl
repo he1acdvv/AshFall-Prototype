@@ -26,7 +26,7 @@ void fragment() {
     // Dark tunnel vignette
     highp float vigRadius = 0.85 - (ConcussionIntensity * 0.50);
     highp float vigSoftness = 0.35 + (ConcussionIntensity * 0.10);
-    highp float vignette = smoothstep(vigRadius, vigRadius - vigSoftness, dist);
+    highp float vignette = 1.0 - smoothstep(vigRadius - vigSoftness, vigRadius, dist);
 
     col *= clamp(vignette, 0.10, 1.0);
 

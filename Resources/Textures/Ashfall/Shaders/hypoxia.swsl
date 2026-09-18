@@ -19,7 +19,7 @@ void fragment() {
     // Tunnel vision radius narrows as hypoxia deepens
     highp float vigRadius = 0.82 - (effectiveIntensity * 0.45);
     highp float vigSoftness = 0.35 + (effectiveIntensity * 0.15);
-    highp float vignette = smoothstep(vigRadius, vigRadius - vigSoftness, dist);
+    highp float vignette = 1.0 - smoothstep(vigRadius - vigSoftness, vigRadius, dist);
 
     highp vec4 baseColor = zTextureSpec(SCREEN_TEXTURE, coord);
     highp vec3 col = baseColor.rgb;

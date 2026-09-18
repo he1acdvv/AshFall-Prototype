@@ -21,7 +21,7 @@ void fragment() {
 
     // Soft warm tint
     highp vec3 warmTint = vec3(1.04, 0.98, 0.92);
-    col *= warmTint;
+    col *= mix(vec3(1.0), warmTint, NarcoticIntensity);
 
     COLOR = vec4(col, 1.0);
 }
