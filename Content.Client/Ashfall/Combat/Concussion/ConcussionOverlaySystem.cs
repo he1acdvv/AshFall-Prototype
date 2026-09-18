@@ -68,15 +68,14 @@ public sealed partial class ConcussionOverlaySystem : EntitySystem
             return;
         }
 
-        var targetIntensity = comp.CurrentState switch
-        {
-            ConcussionState.Severe => Math.Clamp(comp.StoredDamage.Float() / 120f, 0.75f, 1f),
-            ConcussionState.Moderate => Math.Clamp(comp.StoredDamage.Float() / 100f, 0.45f, 0.70f),
-            ConcussionState.Minor => Math.Clamp(comp.StoredDamage.Float() / 50f, 0.20f, 0.40f),
-            _ => 0f
-        };
+        var dmg = comp.StoredDamage.Float();
+        var targetIntensity = dmg <= 5f
+            ? 0f
+            : Math.Clamp((dmg - 5f) / 95f, 0f, 1f);
 
-        var lerpSpeed = MathF.Min(1f, 6.0f * frameTime);
+        var lerpSpeed = targetIntensity > _overlay.ConcussionIntensity
+            ? MathF.Min(1f, 8.0f * frameTime)
+            : MathF.Min(1f, 2.0f * frameTime);
         _overlay.ConcussionIntensity = MathHelper.Lerp(_overlay.ConcussionIntensity, targetIntensity, lerpSpeed);
 
         if (_overlay.ConcussionIntensity > 0.005f)

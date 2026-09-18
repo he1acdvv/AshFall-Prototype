@@ -91,7 +91,10 @@ public sealed partial class RespiratorSystem : EntitySystem
 
             UpdateSaturation(uid, -(float)respirator.UpdateInterval.TotalSeconds, respirator);
 
-            if (!_mobState.IsIncapacitated(uid)) // cannot breathe in crit.
+            var isChoked = (TryComp<PullableComponent>(uid, out var pullable) && pullable.GrabStage == GrabStage.Suffocate)
+                || HasComp<BlockedBreathingComponent>(uid);
+
+            if (!_mobState.IsIncapacitated(uid) && !isChoked) // cannot breathe in crit or when choked
             {
                 switch (respirator.Status)
                 {

@@ -1,0 +1,29 @@
+using Robust.Shared.Player;
+
+namespace Content.Server.Projectiles;
+
+/// <summary>
+/// Applies lag compensation to a projectile, allowing it to hit targets based on
+/// where they were when the shooter saw them according to their ping.
+/// </summary>
+[RegisterComponent]
+public sealed partial class LagCompProjectileComponent : Component
+{
+    /// <summary>
+    /// The player that shot this projectile.
+    /// </summary>
+    [ViewVariables]
+    public ICommonSession? ShooterSession;
+
+    /// <summary>
+    /// The mob that shot the projectile.
+    /// </summary>
+    [DataField]
+    public EntityUid Shooter;
+
+    /// <summary>
+    /// Entities currently being considered for lag compensated collision.
+    /// </summary>
+    [ViewVariables]
+    public HashSet<EntityUid> Targets = new();
+}

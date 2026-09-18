@@ -98,18 +98,7 @@ public partial class ChatBox : UIWidget
         msg.Read = true;
 
         var color = msg.MessageColorOverride ?? msg.Channel.TextColor();
-        string wrapped;
-        if (msg.Channel == ChatChannel.Examine)
-        {
-            color = Color.FromHex("#cfd3dc");
-            var lines = msg.WrappedMessage.Split('\n');
-            var formattedLines = string.Join("\n", lines.Select(l => $"[color=#4e5766]>[/color] [color=#cfd3dc]{l}[/color]"));
-            wrapped = formattedLines;
-        }
-        else
-        {
-            wrapped = msg.WrappedMessage;
-        }
+        var wrapped = msg.WrappedMessage;
 
         var coalesce = _cfg.GetCVar(AshfallCCVars.ChatCoalesceIdenticalMessages);
         if (coalesce && _lastRepeatCount > 0 && _lastChannel == msg.Channel && _lastRawMessage == msg.Message && Contents.EntryCount > 0)
@@ -208,7 +197,7 @@ public partial class ChatBox : UIWidget
     {
         var formatted = new FormattedMessage(3);
         formatted.PushColor(color);
-        formatted.AddMarkupOrThrow(message);
+        formatted.AddMarkupPermissive(message);
         formatted.Pop();
         Contents.AddMessage(formatted, tagsAllowed: null);
     }

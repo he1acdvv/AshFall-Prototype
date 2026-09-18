@@ -84,6 +84,8 @@ public sealed class AshfallCoreSheetlet : Sheetlet<AshfallStylesheet>
             E<PanelContainer>().Class(StyleNano.StyleClassChatPanel).Panel(chatBg),
             E<OutputPanel>().Class(AshfallStylesheet.ChatLogPanelClass)
                 .Prop(OutputPanel.StylePropertyStyleBox, new StyleBoxEmpty()),
+            E<Content.Client.Ashfall.UI.Chat.Controls.CustomOutputPanel>()
+                .Prop(Content.Client.Ashfall.UI.Chat.Controls.CustomOutputPanel.StylePropertyFont, tahoma),
             // Retro-web header strip: warm gradient with an amber underline, tiled 1:1 so the
             // grain never stretches on wide panels.
             E<PanelContainer>().Class(AshfallStylesheet.HeaderPanelClass)

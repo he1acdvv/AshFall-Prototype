@@ -90,9 +90,13 @@ public sealed class ClockGreetingController : UIController
         if (screen == null)
             return;
 
+        var vp = screen.GetWidget<Content.Client.UserInterface.Controls.MainViewport>();
+        var vpPos = vp?.GlobalPosition ?? Vector2.Zero;
+        var vpSize = vp != null && vp.Size.X > 0 ? vp.Size : screen.Size;
+
         var pos = new Vector2(
-            MathF.Round((screen.Size.X - _ui.DesiredSize.X) / 2f),
-            MathF.Round((screen.Size.Y - _ui.DesiredSize.Y) * 0.35f));
+            MathF.Round(vpPos.X + (vpSize.X - _ui.DesiredSize.X) / 2f),
+            MathF.Round(vpPos.Y + (vpSize.Y - _ui.DesiredSize.Y) * 0.19f));
         LayoutContainer.SetPosition(_ui, pos);
 
         switch (_phase)

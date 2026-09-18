@@ -135,25 +135,22 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
         }
 
         // Case 2: Two-handed weapon fired wielded (with 2 hands) without skill
-        // Weapon stays firmly in hands. Produces recoil push, camera shake, jitter and stamina strain.
+        // Weapon stays firmly in hands. Produces camera shake, jitter and stamina strain.
         // Only with a small chance (4%) can the grip slip into one hand (unwield).
         if (isTwoHanded && isWielded && isUnskilled)
         {
             if (wieldable != null && _random.Prob(0.04f))
             {
                 _wield.TryUnwield((gun, wieldable), user, force: true);
-                _throwing.TryThrow(user, impulseDir * 1.0f, baseThrowSpeed: 1.8f, doSpin: false, playSound: false);
-
                 TryPopup(user, Loc.GetString("ashfall-gun-recoil-unwielded"), PopupType.MediumCaution);
                 _jittering.DoJitter(user, TimeSpan.FromSeconds(0.4f), true, 10f, 4f);
                 RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 1.8f), user);
                 return;
             }
 
-            _throwing.TryThrow(user, impulseDir * 0.7f, baseThrowSpeed: 1.4f, doSpin: false, playSound: false);
-            _jittering.DoJitter(user, TimeSpan.FromSeconds(0.3f), true, 7f, 3f);
+            _jittering.DoJitter(user, TimeSpan.FromSeconds(0.2f), true, 5f, 2f);
             TryPopup(user, Loc.GetString("ashfall-gun-recoil-push"), PopupType.SmallCaution);
-            RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 1.5f), user);
+            RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 1.2f), user);
             return;
         }
 
@@ -169,12 +166,11 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
             }
             else
             {
-                _jittering.DoJitter(user, TimeSpan.FromSeconds(0.35f), true, 8f, 3f);
+                _jittering.DoJitter(user, TimeSpan.FromSeconds(0.25f), true, 6f, 2f);
                 TryPopup(user, Loc.GetString("ashfall-gun-recoil-push"), PopupType.SmallCaution);
             }
 
-            _throwing.TryThrow(user, impulseDir * 0.8f, baseThrowSpeed: 1.5f, doSpin: false, playSound: false);
-            RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 1.5f), user);
+            RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 1.2f), user);
         }
     }
 

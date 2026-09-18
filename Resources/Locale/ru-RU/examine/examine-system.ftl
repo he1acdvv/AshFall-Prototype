@@ -9,3 +9,5 @@ examine-verb-name = Осмотреть
 examinable-anchored = Это [color=darkgreen]закреплено[/color] на полу.
 
 examinable-unanchored = Это [color=darkred]не закреплено[/color] на полу.
+
+examine-present-tex = Это [enttex id={$id} size={ $size }/] [bold]{$name}[/bold]

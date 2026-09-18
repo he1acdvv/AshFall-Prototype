@@ -844,7 +844,7 @@ public sealed partial class ChatUIController : UIController
 
         if (isHighlighted && _player.LocalEntity != null && _ent.GetEntity(msg.SenderEntity) != _player.LocalEntity)
         {
-            _ent.System<AudioSystem>().PlayGlobal(new SoundPathSpecifier("/Audio/Ashfall/UI/ChatHighlight/notification1.ogg"), Filter.Local(), false, AudioParams.Default.AddVolume(-4f));
+            _ent.System<AudioSystem>().PlayGlobal(new SoundPathSpecifier("/Audio/Ashfall/UI/ChatHighlight/chat_mention.ogg"), Filter.Local(), false, AudioParams.Default.AddVolume(-4f));
         }
 
         // Color any codewords for minds that have roles that use them

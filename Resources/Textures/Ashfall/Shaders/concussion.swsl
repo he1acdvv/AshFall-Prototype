@@ -26,9 +26,13 @@ void fragment() {
     // Dark tunnel vignette
     highp float vigRadius = 0.85 - (ConcussionIntensity * 0.50);
     highp float vigSoftness = 0.35 + (ConcussionIntensity * 0.10);
-    highp float vignette = 1.0 - smoothstep(vigRadius - vigSoftness, vigRadius, dist);
+    highp float vigFactor = 1.0 - smoothstep(vigRadius - vigSoftness, vigRadius, dist);
+    highp float vignette = mix(1.0, clamp(vigFactor, 0.10, 1.0), ConcussionIntensity);
 
-    col *= clamp(vignette, 0.10, 1.0);
+    col *= vignette;
 
-    COLOR = vec4(col, colBase.a);
+    highp vec4 colOrig = zTextureSpec(SCREEN_TEXTURE, coord);
+    highp vec3 finalCol = mix(colOrig.rgb, col, clamp(ConcussionIntensity, 0.0, 1.0));
+
+    COLOR = vec4(finalCol, colOrig.a);
 }
