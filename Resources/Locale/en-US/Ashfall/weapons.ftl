@@ -201,4 +201,5 @@ ent-WeaponEnergyCrossbowWorn = mini energy crossbow
 
 # Weapon recoil and knockback
 ashfall-gun-recoil-dropped = The weapon is knocked out of your hands by the powerful recoil!
+ashfall-gun-recoil-unwielded = The recoil knocks your two-handed grip loose!
 ashfall-gun-recoil-push = The powerful recoil knocks you backwards!

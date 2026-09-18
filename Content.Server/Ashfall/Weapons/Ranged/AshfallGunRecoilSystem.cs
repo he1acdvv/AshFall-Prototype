@@ -1,25 +1,28 @@
 using System.Numerics;
 using Content.Shared.Ashfall.Audio;
+using Content.Shared.Camera;
 using Content.Shared.Hands.EntitySystems;
 using Content.Shared.Jittering;
 using Content.Shared.Mobs.Components;
 using Content.Shared.Popups;
+using Content.Shared.Throwing;
 using Content.Shared.Weapons.Ranged.Components;
 using Content.Shared.Weapons.Ranged.Events;
 using Content.Shared.Weapons.Ranged.Systems;
+using Content.Shared.Wieldable;
 using Content.Shared.Wieldable.Components;
 using Content.Trauma.Shared.Knowledge.Systems;
 using Robust.Shared.Audio;
-using Robust.Shared.Physics.Components;
-using Robust.Shared.Physics.Systems;
 using Robust.Shared.Random;
+using Robust.Shared.Timing;
 
 namespace Content.Server.Ashfall.Weapons.Ranged;
 
 public sealed partial class AshfallGunRecoilSystem : EntitySystem
 {
     [Dependency] private SharedHandsSystem _hands = default!;
-    [Dependency] private SharedPhysicsSystem _physics = default!;
+    [Dependency] private SharedWieldableSystem _wield = default!;
+    [Dependency] private ThrowingSystem _throwing = default!;
     [Dependency] private SharedJitteringSystem _jittering = default!;
     [Dependency] private SharedPopupSystem _popup = default!;
     [Dependency] private SharedDeafnessSystem _deafness = default!;
@@ -27,6 +30,9 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
     [Dependency] private SharedTransformSystem _transform = default!;
     [Dependency] private EntityLookupSystem _lookup = default!;
     [Dependency] private IRobustRandom _random = default!;
+    [Dependency] private IGameTiming _timing = default!;
+
+    private readonly Dictionary<EntityUid, TimeSpan> _lastRecoilPopup = new();
 
     public override void Initialize()
     {
@@ -46,6 +52,16 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
         HandleTinnitus(gun, user);
     }
 
+    private void TryPopup(EntityUid user, string text, PopupType type)
+    {
+        var curTime = _timing.CurTime;
+        if (_lastRecoilPopup.TryGetValue(user, out var last) && curTime - last < TimeSpan.FromSeconds(1.2f))
+            return;
+
+        _lastRecoilPopup[user] = curTime;
+        _popup.PopupEntity(text, user, user, type);
+    }
+
     private void HandleRecoilAndDrop(Entity<GunComponent> gun, EntityUid user)
     {
         var isTwoHanded = TryComp<WieldableComponent>(gun, out var wieldable);
@@ -56,50 +72,44 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
 
         var isHeavyGun = isTwoHanded || gun.Comp.CameraRecoilScalar >= 1.5f;
 
-        // Case 1: Two-handed weapon fired single-handed (unwielded) -> 100% weapon drop + heavy knockback
-        if (isTwoHanded && !isWielded)
-        {
-            _hands.TryDrop(user, gun, checkActionBlocker: false);
-            _popup.PopupEntity(Loc.GetString("ashfall-gun-recoil-dropped"), user, user, PopupType.LargeCaution);
-            _jittering.DoJitter(user, TimeSpan.FromSeconds(0.6f), true, 16f, 6f);
-            ApplyKnockback(gun, user, 45f);
-            return;
-        }
-
-        // Case 2: Heavy gun fired two-handed without shooting skill -> strong knockback + 30% drop chance
-        if (isWielded && isUnskilled && isHeavyGun)
-        {
-            ApplyKnockback(gun, user, 25f);
-
-            if (_random.Prob(0.30f))
-            {
-                _hands.TryDrop(user, gun, checkActionBlocker: false);
-                _popup.PopupEntity(Loc.GetString("ashfall-gun-recoil-dropped"), user, user, PopupType.LargeCaution);
-                _jittering.DoJitter(user, TimeSpan.FromSeconds(0.5f), true, 12f, 5f);
-            }
-            else
-            {
-                _popup.PopupEntity(Loc.GetString("ashfall-gun-recoil-push"), user, user, PopupType.SmallCaution);
-                _jittering.DoJitter(user, TimeSpan.FromSeconds(0.3f), true, 8f, 4f);
-            }
-            return;
-        }
-
-        // Case 3: Other guns fired without shooting skill -> light push
-        if (isUnskilled && isHeavyGun)
-        {
-            ApplyKnockback(gun, user, 12f);
-        }
-    }
-
-    private void ApplyKnockback(Entity<GunComponent> gun, EntityUid user, float strength)
-    {
-        if (!TryComp<PhysicsComponent>(user, out var userPhysics))
-            return;
-
         var gunRotation = _transform.GetWorldRotation(gun);
         var impulseDir = -gunRotation.ToWorldVec().Normalized();
-        _physics.ApplyLinearImpulse(user, impulseDir * strength, body: userPhysics);
+
+        // Case 1: Two-handed weapon fired single-handed (unwielded) -> 100% weapon knocked out of hand and thrown
+        if (isTwoHanded && !isWielded)
+        {
+            if (_hands.TryDrop(user, gun, checkActionBlocker: false))
+            {
+                var throwDir = (-gunRotation.ToWorldVec() + _random.NextVector2(0.25f)).Normalized();
+                _throwing.TryThrow(gun, throwDir * 2.0f, baseThrowSpeed: 3.5f, user: user);
+            }
+
+            _throwing.TryThrow(user, impulseDir * 2.0f, baseThrowSpeed: 3.0f, doSpin: false, playSound: false);
+
+            TryPopup(user, Loc.GetString("ashfall-gun-recoil-dropped"), PopupType.LargeCaution);
+            _jittering.DoJitter(user, TimeSpan.FromSeconds(0.6f), true, 16f, 6f);
+            RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 2.5f), user);
+            return;
+        }
+
+        // Case 2: Two-handed weapon fired wielded without skill -> recoil breaks two-handed grip back into one hand
+        if (isTwoHanded && isWielded && isUnskilled)
+        {
+            _wield.TryUnwield((gun, wieldable), user, force: true);
+            _throwing.TryThrow(user, impulseDir * 1.2f, baseThrowSpeed: 2.2f, doSpin: false, playSound: false);
+
+            TryPopup(user, Loc.GetString("ashfall-gun-recoil-unwielded"), PopupType.MediumCaution);
+            _jittering.DoJitter(user, TimeSpan.FromSeconds(0.4f), true, 10f, 4f);
+            RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 2.0f), user);
+            return;
+        }
+
+        // Case 3: Other heavy guns fired without shooting skill -> light knockback push
+        if (isUnskilled && isHeavyGun)
+        {
+            _throwing.TryThrow(user, impulseDir * 0.8f, baseThrowSpeed: 1.5f, doSpin: false, playSound: false);
+            RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 1.5f), user);
+        }
     }
 
     private void HandleTinnitus(Entity<GunComponent> gun, EntityUid user)
@@ -107,10 +117,10 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
         if (IsSuppressed(gun.Comp))
             return;
 
-        // Deafens shooter without ear protection
-        _deafness.TryDeafen(user, TimeSpan.FromSeconds(3.5f));
+        // Deafens shooter without ear protection (popup suppressed to prevent overlapping with recoil popup)
+        _deafness.TryDeafen(user, TimeSpan.FromSeconds(3.5f), showPopup: false);
 
-        // Deafens nearby bystanders in 1.5m radius without ear protection
+        // Deafens nearby bystanders in 1.5m radius without ear protection (they receive caution popup)
         var userCoords = _transform.GetMapCoordinates(user);
         foreach (var entity in _lookup.GetEntitiesInRange(userCoords, 1.5f))
         {
@@ -120,7 +130,7 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
             if (!HasComp<MobStateComponent>(entity))
                 continue;
 
-            _deafness.TryDeafen(entity, TimeSpan.FromSeconds(2.0f));
+            _deafness.TryDeafen(entity, TimeSpan.FromSeconds(2.0f), showPopup: true);
         }
     }
 

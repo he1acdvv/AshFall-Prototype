@@ -523,7 +523,7 @@ public sealed partial class AshfallMemorySystem : EntitySystem
         if (!_cfg.GetCVar(AshfallCCVars.MemoryEnabled))
             return;
 
-        if (!HasComp<CharacterMemoryComponent>(args.Examiner))
+        if (!HasComp<CharacterMemoryComponent>(args.Examiner) || args.Examiner == uid)
             return;
 
         if (!_entityIndex.TryGetValue(args.Examiner, out var examinerLinks))
@@ -559,7 +559,7 @@ public sealed partial class AshfallMemorySystem : EntitySystem
         if (!_cfg.GetCVar(AshfallCCVars.MemoryEnabled))
             return;
 
-        if (!HasComp<CharacterMemoryComponent>(args.User))
+        if (!HasComp<CharacterMemoryComponent>(args.User) || args.User == uid)
             return;
 
         if (!_entityIndex.TryGetValue(args.User, out var userLinks))
