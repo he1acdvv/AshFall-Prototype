@@ -426,12 +426,19 @@ public sealed partial class AshfallCharacterPoolSystem : EntitySystem
 
     public bool TryGetSelectedCandidate(NetUserId userId, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out AshfallCharacterCandidate? candidate)
     {
-        if (_playerPools.TryGetValue(userId, out var pool) &&
-            pool.SelectedIndex >= 0 &&
-            pool.SelectedIndex < pool.Candidates.Count)
+        if (_playerPools.TryGetValue(userId, out var pool))
         {
-            candidate = pool.Candidates[pool.SelectedIndex];
-            return true;
+            if (pool.TryGetConfirmedSlot(out var slot))
+            {
+                candidate = slot.Candidate;
+                return true;
+            }
+
+            if (pool.SelectedIndex >= 0 && pool.SelectedIndex < pool.Candidates.Count)
+            {
+                candidate = pool.Candidates[pool.SelectedIndex];
+                return true;
+            }
         }
 
         candidate = null;
@@ -440,7 +447,43 @@ public sealed partial class AshfallCharacterPoolSystem : EntitySystem
 
     public bool TryGetMemoryTags(Guid candidateId, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out HashSet<string>? tags)
     {
+        foreach (var pool in _playerPools.Values)
+        {
+            foreach (var slot in pool.PrioritySlots)
+            {
+                if (slot?.Candidate.CandidateId == candidateId)
+                {
+                    tags = ExtractTagsFromCandidate(slot.Candidate);
+                    return true;
+                }
+            }
+
+            foreach (var candidate in pool.Candidates)
+            {
+                if (candidate.CandidateId == candidateId)
+                {
+                    tags = ExtractTagsFromCandidate(candidate);
+                    return true;
+                }
+            }
+        }
+
         tags = null;
         return false;
+    }
+
+    private static HashSet<string> ExtractTagsFromCandidate(AshfallCharacterCandidate candidate)
+    {
+        var tags = new HashSet<string>();
+        if (!string.IsNullOrEmpty(candidate.PrimaryDomain))
+        {
+            tags.Add($"domain-{candidate.PrimaryDomain}");
+            tags.Add($"family-{candidate.PrimaryDomain}");
+        }
+
+        if (candidate.Dossier.CultureId != null)
+            tags.Add($"culture-{candidate.Dossier.CultureId}");
+
+        return tags;
     }
 }

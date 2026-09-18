@@ -6,6 +6,7 @@ using Content.Shared.Chat;
 using Content.Shared.Examine;
 using Content.Shared.GameTicking;
 using Content.Shared.Popups;
+using Content.Shared.Roles.Jobs;
 using Content.Shared.Verbs;
 using Robust.Shared.Configuration;
 using Robust.Shared.Map;
@@ -31,6 +32,7 @@ public sealed partial class AshfallMemorySystem : EntitySystem
     [Dependency] private SharedPopupSystem _popup = default!;
     [Dependency] private ExamineSystemShared _examine = default!;
     [Dependency] private SharedTransformSystem _transform = default!;
+    [Dependency] private SharedJobSystem _jobs = default!;
 
     private sealed class MemoryLink
     {
@@ -127,26 +129,10 @@ public sealed partial class AshfallMemorySystem : EntitySystem
         if (!_cfg.GetCVar(AshfallCCVars.MemoryEnabled))
             return;
 
-        if (!EntityManager.TrySystem<AshfallCharacterPoolSystem>(out var poolSystem))
-            return;
-
-        if (!poolSystem.TryGetSelectedCandidate(ev.Player.UserId, out var candidate))
-            return;
-
         var comp = EnsureComp<CharacterMemoryComponent>(ev.Mob);
 
-        // Start with structure tags from the pool.
-        if (poolSystem.TryGetMemoryTags(candidate.CandidateId, out var storedTags))
-            comp.MatchingTags.UnionWith(storedTags);
-
-        // Add derived tags from the profile and candidate.
+        // Add derived tags from the profile.
         comp.MatchingTags.Add($"species-{ev.Profile.Species}");
-
-        if (!string.IsNullOrEmpty(candidate.PrimaryDomain))
-            comp.MatchingTags.Add($"domain-{candidate.PrimaryDomain}");
-
-        if (candidate.Dossier.CultureId != null)
-            comp.MatchingTags.Add($"culture-{candidate.Dossier.CultureId}");
 
         var age = ev.Profile.Age;
         comp.MatchingTags.Add(age switch
@@ -155,6 +141,33 @@ public sealed partial class AshfallMemorySystem : EntitySystem
             < 50 => "age-middle",
             _ => "age-senior",
         });
+
+        // Add department and family tags from Job.
+        if (ev.JobId != null && _jobs.TryGetAllDepartments(ev.JobId, out var departments))
+        {
+            foreach (var dept in departments)
+            {
+                comp.MatchingTags.Add($"family-{dept.ID}");
+                comp.MatchingTags.Add($"domain-{dept.ID}");
+            }
+        }
+
+        // Also merge character pool candidate data if available.
+        if (EntityManager.TrySystem<AshfallCharacterPoolSystem>(out var poolSystem) &&
+            poolSystem.TryGetSelectedCandidate(ev.Player.UserId, out var candidate))
+        {
+            if (poolSystem.TryGetMemoryTags(candidate.CandidateId, out var storedTags))
+                comp.MatchingTags.UnionWith(storedTags);
+
+            if (!string.IsNullOrEmpty(candidate.PrimaryDomain))
+            {
+                comp.MatchingTags.Add($"domain-{candidate.PrimaryDomain}");
+                comp.MatchingTags.Add($"family-{candidate.PrimaryDomain}");
+            }
+
+            if (candidate.Dossier.CultureId != null)
+                comp.MatchingTags.Add($"culture-{candidate.Dossier.CultureId}");
+        }
 
         WeaveMemoriesForNewCharacter(ev.Mob, comp);
     }
@@ -702,5 +715,87 @@ public sealed partial class AshfallMemorySystem : EntitySystem
         }
 
         return list;
+    }
+
+    public bool TryForceWeaveMemory(EntityUid entityA, EntityUid entityB, ProtoId<AshfallMemoryTemplatePrototype>? templateId, out string message)
+    {
+        if (entityA == entityB)
+        {
+            message = "Cannot weave memories with self.";
+            return false;
+        }
+
+        var compA = EnsureComp<CharacterMemoryComponent>(entityA);
+        var compB = EnsureComp<CharacterMemoryComponent>(entityB);
+
+        EnsureBaselineTags(entityA, compA);
+        EnsureBaselineTags(entityB, compB);
+
+        if (templateId != null)
+        {
+            if (!_proto.TryIndex(templateId.Value, out var template))
+            {
+                message = $"Template prototype '{templateId.Value}' not found.";
+                return false;
+            }
+
+            var link = new MemoryLink
+            {
+                EntityA = entityA,
+                EntityB = entityB,
+                TemplateId = template.ID,
+                Tier = template.Tier,
+                Category = template.Category,
+                SideATextLoc = template.SideAText,
+                SideBTextLoc = template.SideBText,
+                SideASummaryLoc = template.SideASummary,
+                SideBSummaryLoc = template.SideBSummary,
+            };
+
+            _allLinks.Add(link);
+            GetOrCreateIndex(entityA).Add(link);
+            GetOrCreateIndex(entityB).Add(link);
+
+            message = $"Force-wove memory '{template.ID}' between {ToPrettyString(entityA)} (Side A) and {ToPrettyString(entityB)} (Side B).";
+            return true;
+        }
+
+        if (TryCreateMemoryLink(entityA, compA, entityB, compB))
+        {
+            var links = _entityIndex[entityA];
+            var created = links[^1];
+            message = $"Successfully wove memory '{created.TemplateId}' between {ToPrettyString(entityA)} and {ToPrettyString(entityB)}.";
+            return true;
+        }
+
+        message = $"Failed to find a matching memory template between {ToPrettyString(entityA)} and {ToPrettyString(entityB)} with current tags.";
+        return false;
+    }
+
+    private void EnsureBaselineTags(EntityUid uid, CharacterMemoryComponent comp)
+    {
+        if (comp.MatchingTags.Count > 0)
+            return;
+
+        comp.MatchingTags.Add("species-Human");
+        comp.MatchingTags.Add("age-middle");
+    }
+
+    public IReadOnlyList<(EntityUid Partner, string TemplateId, bool Discovered, string Summary)> GetEntityMemories(EntityUid uid)
+    {
+        if (!_entityIndex.TryGetValue(uid, out var links))
+            return Array.Empty<(EntityUid, string, bool, string)>();
+
+        var result = new List<(EntityUid Partner, string TemplateId, bool Discovered, string Summary)>();
+        foreach (var link in links)
+        {
+            var isSideA = link.EntityA == uid;
+            var partner = isSideA ? link.EntityB : link.EntityA;
+            var discovered = isSideA ? link.DiscoveredByA : link.DiscoveredByB;
+            var summary = GetSideSummary(link, isSideA);
+            result.Add((partner, link.TemplateId.Id, discovered, summary));
+        }
+
+        return result;
     }
 }
