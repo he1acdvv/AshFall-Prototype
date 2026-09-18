@@ -62,6 +62,16 @@ public abstract partial class SharedKnowledgeSystem
             }
         }
 
+        // Handle Experience (Bonus Experience)
+        foreach (var (id, xp) in ent.Comp.Experience)
+        {
+            if (EnsureKnowledge(brain, id) is { } unit)
+            {
+                unit.Comp.BonusExperience += xp;
+                Dirty(unit);
+            }
+        }
+
         // Handle Blocks
         foreach (var id in ent.Comp.Blocked.Keys)
         {
@@ -88,10 +98,24 @@ public abstract partial class SharedKnowledgeSystem
             if (GetKnowledge(brain, id) is not { } unit)
                 continue;
 
-            unit.Comp.TemporaryLevel = Math.Max(0, unit.Comp.TemporaryLevel - level);
+            unit.Comp.TemporaryLevel -= level;
 
-            // If they have no real levels and no more temp levels, clean up
-            if (unit.Comp.NetLevel <= 0)
+            // If they have no real levels, no more temp levels, and no bonus xp, clean up
+            if (unit.Comp.LearnedLevel <= 0 && unit.Comp.TemporaryLevel == 0 && unit.Comp.BonusExperience <= 0)
+                RemoveKnowledge(brain, id);
+            else
+                Dirty(unit);
+        }
+
+        // Remove Experience
+        foreach (var (id, xp) in ent.Comp.Experience)
+        {
+            if (GetKnowledge(brain, id) is not { } unit)
+                continue;
+
+            unit.Comp.BonusExperience = Math.Max(0, unit.Comp.BonusExperience - xp);
+
+            if (unit.Comp.LearnedLevel <= 0 && unit.Comp.TemporaryLevel == 0 && unit.Comp.BonusExperience <= 0)
                 RemoveKnowledge(brain, id);
             else
                 Dirty(unit);
