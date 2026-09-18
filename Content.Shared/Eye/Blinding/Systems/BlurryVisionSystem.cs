@@ -2,10 +2,14 @@ using Content.Shared.Eye.Blinding.Components;
 using Content.Shared.Inventory.Events;
 using Content.Shared.Inventory;
 
+using Robust.Shared.Timing;
+
 namespace Content.Shared.Eye.Blinding.Systems;
 
 public sealed partial class BlurryVisionSystem : EntitySystem
 {
+    [Dependency] private IGameTiming _timing = default!;
+
     public override void Initialize()
     {
         base.Initialize();
@@ -13,6 +17,22 @@ public sealed partial class BlurryVisionSystem : EntitySystem
         SubscribeLocalEvent<VisionCorrectionComponent, GotEquippedEvent>(OnGlassesEquipped);
         SubscribeLocalEvent<VisionCorrectionComponent, GotUnequippedEvent>(OnGlassesUnequipped);
         SubscribeLocalEvent<VisionCorrectionComponent, InventoryRelayedEvent<GetBlurEvent>>(OnGetBlur);
+    }
+
+    public override void Update(float frameTime)
+    {
+        base.Update(frameTime);
+
+        var curTime = _timing.CurTime;
+        var query = EntityQueryEnumerator<BlurryVisionComponent>();
+        while (query.MoveNext(out var uid, out var blurry))
+        {
+            if (blurry.BlurEndTime != null && curTime >= blurry.BlurEndTime.Value)
+            {
+                blurry.BlurEndTime = null;
+                UpdateBlurMagnitude(uid);
+            }
+        }
     }
 
     private void OnGetBlur(Entity<VisionCorrectionComponent> glasses, ref InventoryRelayedEvent<GetBlurEvent> args)
@@ -49,11 +69,17 @@ public sealed partial class BlurryVisionSystem : EntitySystem
     /// <summary>
     /// Explicitly set the blur magnitude on an entity (e.g. from recoil disorientation or flash).
     /// </summary>
-    public void SetBlurMagnitude(EntityUid uid, float magnitude)
+    public void SetBlurMagnitude(EntityUid uid, float magnitude, TimeSpan? duration = null)
     {
         var blurry = EnsureComp<BlurryVisionComponent>(uid);
         blurry.Magnitude = Math.Clamp(magnitude, 0, BlurryVisionComponent.MaxMagnitude);
         blurry.CorrectionPower = BlurryVisionComponent.DefaultCorrectionPower;
+        if (duration != null)
+        {
+            var newEnd = _timing.CurTime + duration.Value;
+            if (blurry.BlurEndTime == null || newEnd > blurry.BlurEndTime.Value)
+                blurry.BlurEndTime = newEnd;
+        }
         Dirty(uid, blurry);
     }
 

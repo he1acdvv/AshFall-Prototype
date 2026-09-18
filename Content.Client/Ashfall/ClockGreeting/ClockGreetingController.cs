@@ -90,13 +90,10 @@ public sealed class ClockGreetingController : UIController
         if (screen == null)
             return;
 
-        if (_phase != GreetingPhase.Deleting)
-        {
-            var pos = new Vector2(
-                screen.Size.X - _ui.DesiredSize.X - Padding,
-                screen.Size.Y - _ui.DesiredSize.Y - Padding);
-            LayoutContainer.SetPosition(_ui, pos);
-        }
+        var pos = new Vector2(
+            MathF.Round((screen.Size.X - _ui.DesiredSize.X) / 2f),
+            MathF.Round((screen.Size.Y - _ui.DesiredSize.Y) * 0.35f));
+        LayoutContainer.SetPosition(_ui, pos);
 
         switch (_phase)
         {

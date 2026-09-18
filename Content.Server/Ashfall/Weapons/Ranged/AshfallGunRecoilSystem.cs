@@ -97,8 +97,8 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
         if (isHeavyGun || !isWielded || isUnskilled)
         {
             _statusEffects.TryAddStatusEffectDuration(user, SharedFlashSystem.FlashedKey, TimeSpan.FromSeconds(0.18f));
-            _statusEffects.TryAddStatusEffectDuration(user, "StatusEffectBlurryVision", TimeSpan.FromSeconds(1.0f));
-            _blurryVision.SetBlurMagnitude(user, 5.0f);
+            _statusEffects.TryAddStatusEffectDuration(user, "StatusEffectBlurryVision", TimeSpan.FromSeconds(0.8f));
+            _blurryVision.SetBlurMagnitude(user, 3.5f, TimeSpan.FromSeconds(0.8f));
         }
 
         if (!isWielded || isUnskilled)
@@ -135,44 +135,32 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
         }
 
         // Case 2: Two-handed weapon fired wielded (with 2 hands) without skill
-        // Can still knock weapon out completely (25%), or break two-handed grip into 1 hand (55%), or hold on with push (20%)
+        // Weapon stays firmly in hands. Produces recoil push, camera shake, jitter and stamina strain.
+        // Only with a small chance (4%) can the grip slip into one hand (unwield).
         if (isTwoHanded && isWielded && isUnskilled)
         {
-            var roll = _random.NextFloat();
-            if (roll < 0.25f && _hands.TryDrop(user, gun, checkActionBlocker: false))
-            {
-                var throwDir = (-gunRotation.ToWorldVec() + _random.NextVector2(0.25f)).Normalized();
-                _throwing.TryThrow(gun, throwDir * 2.0f, baseThrowSpeed: 3.5f, user: user);
-                _throwing.TryThrow(user, impulseDir * 1.5f, baseThrowSpeed: 2.5f, doSpin: false, playSound: false);
-
-                TryPopup(user, Loc.GetString("ashfall-gun-recoil-dropped"), PopupType.LargeCaution);
-                _jittering.DoJitter(user, TimeSpan.FromSeconds(0.5f), true, 14f, 5f);
-                RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 2.5f), user);
-                return;
-            }
-
-            if (roll < 0.80f)
+            if (wieldable != null && _random.Prob(0.04f))
             {
                 _wield.TryUnwield((gun, wieldable), user, force: true);
-                _throwing.TryThrow(user, impulseDir * 1.2f, baseThrowSpeed: 2.2f, doSpin: false, playSound: false);
+                _throwing.TryThrow(user, impulseDir * 1.0f, baseThrowSpeed: 1.8f, doSpin: false, playSound: false);
 
                 TryPopup(user, Loc.GetString("ashfall-gun-recoil-unwielded"), PopupType.MediumCaution);
                 _jittering.DoJitter(user, TimeSpan.FromSeconds(0.4f), true, 10f, 4f);
-                RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 2.0f), user);
+                RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 1.8f), user);
                 return;
             }
 
-            _throwing.TryThrow(user, impulseDir * 1.0f, baseThrowSpeed: 2.0f, doSpin: false, playSound: false);
-            _jittering.DoJitter(user, TimeSpan.FromSeconds(0.35f), true, 8f, 3f);
+            _throwing.TryThrow(user, impulseDir * 0.7f, baseThrowSpeed: 1.4f, doSpin: false, playSound: false);
+            _jittering.DoJitter(user, TimeSpan.FromSeconds(0.3f), true, 7f, 3f);
             TryPopup(user, Loc.GetString("ashfall-gun-recoil-push"), PopupType.SmallCaution);
-            RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 1.8f), user);
+            RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 1.5f), user);
             return;
         }
 
-        // Case 3: Other heavy guns fired without shooting skill
-        if (isUnskilled && isHeavyGun)
+        // Case 3: Other heavy guns (e.g. heavy one-handed revolvers) fired without shooting skill
+        if (isUnskilled && isHeavyGun && !isTwoHanded)
         {
-            if (_random.Prob(0.20f) && _hands.TryDrop(user, gun, checkActionBlocker: false))
+            if (_random.Prob(0.12f) && _hands.TryDrop(user, gun, checkActionBlocker: false))
             {
                 var throwDir = (-gunRotation.ToWorldVec() + _random.NextVector2(0.2f)).Normalized();
                 _throwing.TryThrow(gun, throwDir * 1.5f, baseThrowSpeed: 2.5f, user: user);

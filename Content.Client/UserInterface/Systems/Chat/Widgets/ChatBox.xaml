@@ -16,7 +16,7 @@
                     <ashfallcontrols:ChatSearchBox Name="ChatSearch" Access="Public" HorizontalExpand="True" />
                 </BoxContainer>
             </PanelContainer>
-            <OutputPanel Name="Contents" HorizontalExpand="True" VerticalExpand="True" Margin="8 8 8 4" ShowScrollDownButton="True" StyleClasses="AshfallChatLogPanel" />
+            <OutputPanel Name="Contents" HorizontalExpand="True" VerticalExpand="True" Margin="8 8 8 4" ShowScrollDownButton="True" />
             <controls:ChatInputBox HorizontalExpand="True" Name="ChatInput" Access="Public" Margin="2"/>
         </BoxContainer>
     </PanelContainer>

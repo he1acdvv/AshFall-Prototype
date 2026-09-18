@@ -81,7 +81,7 @@ public sealed partial class DeafnessSystem : EntitySystem
         if (_tinnitusStream == null)
         {
             _tinnitusStream = _audioSystem.PlayGlobal(
-                new SoundPathSpecifier("/Audio/Effects/tinnitus.ogg"),
+                new SoundPathSpecifier("/Audio/Ashfall/Effects/tinnitus_ring.ogg"),
                 Filter.Local(),
                 false,
                 AudioParams.Default.WithVolume(SharedAudioSystem.GainToVolume(BaseTinnitusGain)).WithLoop(true));
