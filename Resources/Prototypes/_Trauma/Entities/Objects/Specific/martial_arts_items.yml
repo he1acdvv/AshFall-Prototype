@@ -1,0 +1,115 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+- type: entity
+  parent: [BaseItem, BaseSyndicateContraband, BaseBookSounds]
+  id: CapoeiraManual
+  name: choreography manual
+  description: Choreography manual — or so it claims. Every second page ends with someone on the floor, not dancing.
+  components:
+  - type: Sprite
+    sprite: _Goobstation/Objects/Misc/martial_arts.rsi
+    layers:
+    - state: capoeira
+  - type: Item
+    size: Small
+  - type: StaticPrice
+    price: 3000
+  - type: UseRequiresSight
+  - type: KnowledgeGrantOnUse
+    skills:
+      MartialArtCapoeira: 88
+    doAfter: 2
+  - type: GuideHelp
+    guides:
+    - Capoeira
+
+- type: entity
+  parent: [ BaseItem, BaseSyndicateContraband ]
+  id: SleepingCarpScroll
+  name: mysterious scroll
+  description: A scroll filled with strange markings. It seems to be drawings of some sort of martial art.
+  components:
+  - type: Sprite
+    sprite: _Goobstation/Wizard/Objects/scroll.rsi
+    layers:
+    - state: scroll2
+  - type: Item
+    sprite: _Goobstation/Wizard/Objects/scroll.rsi
+    size: Small
+  - type: StaticPrice
+    price: 3000
+  - type: UseRequiresSight
+  - type: KnowledgeGrantOnUse
+    skills:
+      MartialArtSleepingCarp: 88
+    doAfter: 2
+  - type: GuideHelp
+    guides:
+    - SleepingCarp
+
+- type: entity
+  parent: [ClothingBeltStorageBase, ContentsExplosionResistanceBase, BaseSecurityContraband]
+  id: ClothingBeltCorporateJudo
+  name: Corporate Judo Belt
+  description: Teaches the wearer NT Corporate Judo.
+  components:
+  - type: Sprite
+    sprite: _Goobstation/Clothing/Belt/judobelt.rsi
+  - type: Clothing
+    sprite: _Goobstation/Clothing/Belt/judobelt.rsi
+  - type: ExplosionResistance
+    damageCoefficient: 0.9
+  - type: KnowledgeGrantOnWear
+    skills:
+      MartialArtCorporateJudo: 88
+    experience:
+      MartialArtCorporateJudo: 2
+  - type: Storage
+    whitelist:
+      tags:
+      - CigPack
+      - Taser
+      - SecBeltEquip
+      - Radio
+      - Sidearm
+      - MagazinePistol
+      - MagazineMagnum
+      - CombatKnife
+      - Truncheon
+      - HandGrenade
+      - Stunbaton
+      components:
+      - FlashOnTrigger
+      - SmokeOnTrigger
+      - Flash
+      - Handcuff
+      - BallisticAmmoProvider
+      - CartridgeAmmo
+      - DoorRemote
+      - Whistle
+      - BalloonPopper
+  - type: GuideHelp
+    guides:
+    - CorporateJudo
+
+- type: entity
+  parent: [ ClothingHandsBase, BaseSecurityContraband ]
+  id: ClothingHandsGlovesKravMaga
+  name: Krav Maga gloves
+  description: These gloves can teach you to perform Krav Maga using nanochips for as long as you're wearing them.
+  components:
+  - type: Sprite
+    sprite: _Goobstation/Clothing/Hands/Gloves/kravgloves.rsi
+  - type: Item
+  - type: Clothing
+  - type: Fiber
+    fiberMaterial: fibers-leather
+    fiberColor: fibers-red
+  - type: KnowledgeGrantOnWear
+    skills:
+      MartialArtKravMaga: 88
+    experience:
+      MartialArtKravMaga: 2
+  - type: GuideHelp
+    guides:
+    - KravMaga

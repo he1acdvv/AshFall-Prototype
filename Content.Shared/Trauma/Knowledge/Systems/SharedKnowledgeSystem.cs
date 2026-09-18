@@ -79,6 +79,7 @@ public abstract partial class SharedKnowledgeSystem : CommonKnowledgeSystem
         Subs.CVar(_cfg, TraumaCVars.SkillGain, x => _skillGain = x, true);
 
         InitializeMartialArts();
+        InitializeOnWear();
 
         LoadSkillPrototypes();
     }

@@ -12,26 +12,12 @@
   id: Civilian
   name: department-Civilian
   description: department-Civilian-description
-  color: "#9FED58"
+  color: "#7F7F7F"
   weight: -10
   ignoreForDepartmentFallback: true
   roles:
-  - Bartender
-  - Botanist
-  - Chaplain
-  - Chef
-  - Clown
-  - HeadOfPersonnel
-  - Janitor
-  - Lawyer
-  - Librarian
-  - Mime
-  - Musician
   - Passenger
-  - Reporter
   - Visitor
-  - ServiceWorker
-  - TramDriver
 
 # Please kill this
 - type: department

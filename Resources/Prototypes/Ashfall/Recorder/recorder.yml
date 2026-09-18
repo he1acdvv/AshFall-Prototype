@@ -39,6 +39,7 @@
     containers:
       ashfall_recorder_tape: !type:ContainerSlot {}
   - type: ItemSlots
+  - type: UniversalRecorderRuntime
   - type: UserInterface
     interfaces:
       enum.UniversalRecorderUiKey.Recorder:

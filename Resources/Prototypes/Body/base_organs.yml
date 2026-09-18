@@ -188,6 +188,10 @@
     tags:
     - Head
   - type: SurgeryTarget
+  - type: UserInterface
+    interfaces:
+      enum.SurgeryUIKey.Key:
+        type: SurgeryBui
 
 - type: entity
   parent:
