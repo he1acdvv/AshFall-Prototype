@@ -125,6 +125,8 @@
     highPressureMultiplier: 0.6
     lowPressureMultiplier: 1000
   - type: IngestionBlocker
+  - type: EarProtection
+    protection: 1.0
   - type: Clothing
     #Copies ClothingHeadHardsuitBase behavior
     equipSound: /Audio/Mecha/mechmove03.ogg
@@ -183,6 +185,8 @@
         Radiation: 0.25
   - type: GroupExamine
   - type: IngestionBlocker
+  - type: EarProtection
+    protection: 1.0
   - type: Tag
     tags:
     - WhitelistChameleon
