@@ -34,9 +34,10 @@ public sealed partial class CameraRecoilSystem : SharedCameraRecoilSystem
         if (!Resolve(uid, ref component, false))
             return;
 
-        // Powerful screen shake: always provide strong recoil kick regardless of accessibility slider
-        var effectiveIntensity = Math.Max(1.6f, _intensity * 1.6f);
-        recoil *= effectiveIntensity;
+        if (_intensity == 0)
+            return;
+
+        recoil *= _intensity * 1.6f;
 
         const float maxKick = 2.5f;
         var existing = component.CurrentKick.Length();

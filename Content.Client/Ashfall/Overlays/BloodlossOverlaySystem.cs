@@ -73,7 +73,7 @@ public sealed partial class BloodlossOverlaySystem : EntitySystem
 
         if (TryComp<BloodstreamComponent>(player, out var stream))
         {
-            if (_solutionContainer.TryGetSolution(player, BloodstreamComponent.DefaultBloodSolutionName, out _, out _)
+            if (_solutionContainer.TryGetSolution(player, stream.BloodSolutionName, out _, out _)
                 && _bloodstream.GetBloodLevel((player, stream)) is var bloodLevel
                 && bloodLevel < 0.65f)
             {

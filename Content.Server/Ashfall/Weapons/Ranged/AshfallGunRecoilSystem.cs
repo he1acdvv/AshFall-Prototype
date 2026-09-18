@@ -1,4 +1,5 @@
 using System.Numerics;
+using Content.Shared.GameTicking;
 using Content.Shared.Ashfall.Audio;
 using Content.Shared.Camera;
 using Content.Shared.Flash;
@@ -42,6 +43,13 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
         base.Initialize();
 
         SubscribeLocalEvent<GunComponent, GunShotEvent>(OnGunShot);
+        SubscribeLocalEvent<EntityTerminatingEvent>(OnTerminating);
+        SubscribeLocalEvent<RoundRestartCleanupEvent>(_ => _lastRecoilPopup.Clear());
+    }
+
+    private void OnTerminating(ref EntityTerminatingEvent args)
+    {
+        _lastRecoilPopup.Remove(args.Entity);
     }
 
     private void OnGunShot(Entity<GunComponent> gun, ref GunShotEvent args)

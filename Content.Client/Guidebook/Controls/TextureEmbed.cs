@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Numerics;
 using Content.Client.Guidebook.Richtext;
 using Robust.Client.Graphics;
@@ -56,7 +57,7 @@ public sealed partial class TextureEmbed : Control, IDocumentTag
         var scale = DefaultScale;
         if (args.TryGetValue("Scale", out var scaleStr))
         {
-            if (!float.TryParse(scaleStr, out scale))
+            if (!float.TryParse(scaleStr, NumberStyles.Float, CultureInfo.InvariantCulture, out scale))
             {
                 Logger.GetSawmill("Guidebook").Error($"Invalid scale value {scaleStr}");
                 return false;
