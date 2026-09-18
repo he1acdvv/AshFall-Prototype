@@ -15,6 +15,10 @@ using Content.Shared.Weapons.Ranged.Systems;
 using Content.Shared.Wieldable;
 using Content.Shared.Wieldable.Components;
 using Content.Trauma.Shared.Knowledge.Systems;
+using Content.Shared.Damage;
+using Content.Shared.Damage.Systems;
+using Content.Shared.Eye.Blinding.Components;
+using Content.Shared.Eye.Blinding.Systems;
 using Robust.Shared.Audio;
 using Robust.Shared.Random;
 using Robust.Shared.Timing;
@@ -35,6 +39,9 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
     [Dependency] private IRobustRandom _random = default!;
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private StatusEffectsSystem _statusEffects = default!;
+    [Dependency] private DamageableSystem _damage = default!;
+    [Dependency] private SharedStaminaSystem _stamina = default!;
+    [Dependency] private BlurryVisionSystem _blurryVision = default!;
 
     private readonly Dictionary<EntityUid, TimeSpan> _lastRecoilPopup = new();
 
@@ -76,7 +83,7 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
     private void HandleRecoilAndDrop(Entity<GunComponent> gun, EntityUid user)
     {
         var isTwoHanded = TryComp<WieldableComponent>(gun, out var wieldable);
-        var isWielded = wieldable != null && wieldable.Wielded;
+        var isWielded = wieldable?.Wielded ?? false;
 
         var skillLevel = _knowledge.GetKnowledgeLevel(user, ShootingKnowledgeSystem.ShootingKnowledge);
         var isUnskilled = skillLevel <= 0;
@@ -86,18 +93,25 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
         var gunRotation = _transform.GetWorldRotation(gun);
         var impulseDir = -gunRotation.ToWorldVec().Normalized();
 
-        // Subtle muzzle flash and blast blur
-        if (isHeavyGun || !isWielded)
+        // Muzzle flash, blast blur with actual magnitude, and camera rumble on unskilled / heavy / unwielded shots
+        if (isHeavyGun || !isWielded || isUnskilled)
         {
             _statusEffects.TryAddStatusEffectDuration(user, SharedFlashSystem.FlashedKey, TimeSpan.FromSeconds(0.18f));
-            _statusEffects.TryAddStatusEffectDuration(user, "StatusEffectBlurryVision", TimeSpan.FromSeconds(0.45f));
+            _statusEffects.TryAddStatusEffectDuration(user, "StatusEffectBlurryVision", TimeSpan.FromSeconds(1.0f));
+            _blurryVision.SetBlurMagnitude(user, 5.0f);
+        }
+
+        if (!isWielded || isUnskilled)
+        {
+            var staminaCost = isTwoHanded && !isWielded ? 18f : (isHeavyGun ? 14f : 10f);
+            _stamina.TakeStaminaDamage(user, staminaCost);
         }
 
         // Case 1: Two-handed weapon fired single-handed (unwielded)
-        // High chance to drop & throw weapon out of hand, especially without skill
+        // High chance (85-90%) to drop & throw weapon out of hand, blunt injury to shooter, stamina loss
         if (isTwoHanded && !isWielded)
         {
-            var dropProb = isUnskilled ? 0.75f : 0.30f;
+            var dropProb = isUnskilled ? 0.90f : 0.85f;
             if (_random.Prob(dropProb) && _hands.TryDrop(user, gun, checkActionBlocker: false))
             {
                 var throwDir = (-gunRotation.ToWorldVec() + _random.NextVector2(0.25f)).Normalized();
@@ -108,6 +122,11 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
             {
                 TryPopup(user, Loc.GetString("ashfall-gun-recoil-push"), PopupType.MediumCaution);
             }
+
+            // Blunt recoil self-damage to arm/body
+            var bluntDmg = new DamageSpecifier();
+            bluntDmg.DamageDict["Blunt"] = _random.NextFloat(6f, 10f);
+            _damage.TryChangeDamage(user, bluntDmg, origin: gun);
 
             _throwing.TryThrow(user, impulseDir * 2.0f, baseThrowSpeed: 3.0f, doSpin: false, playSound: false);
             _jittering.DoJitter(user, TimeSpan.FromSeconds(0.6f), true, 16f, 6f);
@@ -144,6 +163,7 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
             }
 
             _throwing.TryThrow(user, impulseDir * 1.0f, baseThrowSpeed: 2.0f, doSpin: false, playSound: false);
+            _jittering.DoJitter(user, TimeSpan.FromSeconds(0.35f), true, 8f, 3f);
             TryPopup(user, Loc.GetString("ashfall-gun-recoil-push"), PopupType.SmallCaution);
             RaiseNetworkEvent(new CameraKickEvent(GetNetEntity(user), impulseDir * 1.8f), user);
             return;
@@ -157,9 +177,11 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
                 var throwDir = (-gunRotation.ToWorldVec() + _random.NextVector2(0.2f)).Normalized();
                 _throwing.TryThrow(gun, throwDir * 1.5f, baseThrowSpeed: 2.5f, user: user);
                 TryPopup(user, Loc.GetString("ashfall-gun-recoil-dropped"), PopupType.LargeCaution);
+                _jittering.DoJitter(user, TimeSpan.FromSeconds(0.4f), true, 12f, 4f);
             }
             else
             {
+                _jittering.DoJitter(user, TimeSpan.FromSeconds(0.35f), true, 8f, 3f);
                 TryPopup(user, Loc.GetString("ashfall-gun-recoil-push"), PopupType.SmallCaution);
             }
 
@@ -174,7 +196,7 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
             return;
 
         // Deafens shooter without ear protection (popup suppressed to prevent overlapping with recoil popup)
-        _deafness.TryDeafen(user, TimeSpan.FromSeconds(3.5f), showPopup: false);
+        _deafness.TryDeafen(user, TimeSpan.FromSeconds(10.0f), showPopup: false);
 
         // Deafens nearby bystanders in 1.5m radius without ear protection (they receive caution popup)
         var userCoords = _transform.GetMapCoordinates(user);
@@ -186,7 +208,7 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
             if (!HasComp<MobStateComponent>(entity))
                 continue;
 
-            _deafness.TryDeafen(entity, TimeSpan.FromSeconds(2.0f), showPopup: true);
+            _deafness.TryDeafen(entity, TimeSpan.FromSeconds(8.0f), showPopup: true);
         }
     }
 

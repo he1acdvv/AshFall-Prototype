@@ -46,6 +46,17 @@ public sealed partial class BlurryVisionSystem : EntitySystem
         Dirty(ent, blurry);
     }
 
+    /// <summary>
+    /// Explicitly set the blur magnitude on an entity (e.g. from recoil disorientation or flash).
+    /// </summary>
+    public void SetBlurMagnitude(EntityUid uid, float magnitude)
+    {
+        var blurry = EnsureComp<BlurryVisionComponent>(uid);
+        blurry.Magnitude = Math.Clamp(magnitude, 0, BlurryVisionComponent.MaxMagnitude);
+        blurry.CorrectionPower = BlurryVisionComponent.DefaultCorrectionPower;
+        Dirty(uid, blurry);
+    }
+
     private void OnGlassesEquipped(Entity<VisionCorrectionComponent> glasses, ref GotEquippedEvent args)
     {
         UpdateBlurMagnitude(args.EquipTarget);

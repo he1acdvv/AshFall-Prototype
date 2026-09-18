@@ -1,4 +1,4 @@
-﻿using Content.Shared.Chat;
+using Content.Shared.Chat;
 using Content.Shared.Input;
 using Robust.Client.UserInterface.Controls;
 
@@ -14,8 +14,11 @@ public class ChatInputBox : PanelContainer
     public readonly ChannelSelectorButton ChannelSelector;
     public readonly HistoryLineEdit Input;
     public readonly ChannelFilterButton FilterButton;
+    public readonly Button SearchButton;
     protected readonly BoxContainer Container;
     protected ChatChannel ActiveChannel { get; private set; } = ChatChannel.Local;
+
+    public event Action? OnSearchButtonPressed;
 
     public ChatInputBox()
     {
@@ -42,6 +45,18 @@ public class ChatInputBox : PanelContainer
             StyleClasses = { StyleClassChatLineEdit }
         };
         Container.AddChild(Input);
+
+        SearchButton = new Button
+        {
+            Name = "SearchButton",
+            Text = "🔍",
+            ToolTip = Loc.GetString("hud-adt-chat-search-button-tooltip"),
+            StyleClasses = { StyleClassChatFilterOptionButton },
+            MinSize = new System.Numerics.Vector2(28, 0)
+        };
+        SearchButton.OnPressed += _ => OnSearchButtonPressed?.Invoke();
+        Container.AddChild(SearchButton);
+
         FilterButton = new ChannelFilterButton
         {
             Name = "FilterButton",

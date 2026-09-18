@@ -83,21 +83,7 @@ public abstract partial class SharedWieldableSystem : EntitySystem
 
     private void OnShootAttempt(EntityUid uid, GunRequiresWieldComponent component, ref ShotAttemptedEvent args)
     {
-        if (TryComp<WieldableComponent>(uid, out var wieldable) &&
-            !wieldable.Wielded)
-        {
-            args.Cancel();
-
-            var time = _timing.CurTime;
-            if (time > component.LastPopup + component.PopupCooldown &&
-                !HasComp<MeleeWeaponComponent>(uid) &&
-                !HasComp<MeleeRequiresWieldComponent>(uid))
-            {
-                component.LastPopup = time;
-                var message = Loc.GetString("wieldable-component-requires", ("item", uid));
-                _popup.PopupEntity(message, args.Used, args.User);
-            }
-        }
+        // Ashfall: Allow single-handed firing attempts with heavy recoil, drop, and self-injury consequences handled by AshfallGunRecoilSystem
     }
 
     private void OnGunUnwielded(EntityUid uid, GunWieldBonusComponent component, ItemUnwieldedEvent args)

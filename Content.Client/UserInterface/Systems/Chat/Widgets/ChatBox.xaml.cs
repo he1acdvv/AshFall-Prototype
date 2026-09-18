@@ -1,4 +1,5 @@
 using System.Linq;
+using Content.Client.Ashfall.UI.Chat;
 using Content.Client.UserInterface.Systems.Chat.Controls;
 using Content.Shared.Ashfall;
 using Content.Shared.Chat;
@@ -29,12 +30,15 @@ public partial class ChatBox : UIWidget
 
     private readonly ISawmill _sawmill;
     private readonly ChatUIController _controller;
+    private readonly ChatSearchController _searchController;
 
     private string? _lastRawMessage;
     private ChatChannel _lastChannel;
     private int _lastRepeatCount;
 
     public bool Main { get; set; }
+
+    public string SearchFilter { get; private set; } = string.Empty;
 
     public ChatSelectChannel SelectedChannel => ChatInput.ChannelSelector.SelectedChannel;
 
@@ -51,6 +55,11 @@ public partial class ChatBox : UIWidget
         ChatInput.ChannelSelector.OnChannelSelect += OnChannelSelect;
         ChatInput.FilterButton.Popup.OnChannelFilter += OnChannelFilter;
         ChatInput.FilterButton.Popup.OnNewHighlights += OnNewHighlights;
+        ChatInput.OnSearchButtonPressed += ToggleSearch;
+        ChatSearch.OnSearchChanged += OnSearchTextChanged;
+        ChatSearch.OnSearchClosed += CloseSearch;
+
+        _searchController = UserInterfaceManager.GetUIController<ChatSearchController>();
         _controller = UserInterfaceManager.GetUIController<ChatUIController>();
         _controller.MessageAdded += OnMessageAdded;
         _controller.HighlightsUpdated += OnHighlightsUpdated;
@@ -73,6 +82,12 @@ public partial class ChatBox : UIWidget
     {
         _sawmill.Debug($"{msg.Channel}: {msg.Message}");
         if (!ChatInput.FilterButton.Popup.IsActive(msg.Channel))
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(SearchFilter)
+            && !_searchController.MatchesQuery(msg, SearchFilter))
         {
             return;
         }
@@ -131,6 +146,41 @@ public partial class ChatBox : UIWidget
         {
             OnMessageAdded(message.Item2);
         }
+    }
+
+    public void SetSearchFilter(string filter)
+    {
+        SearchFilter = filter.Trim();
+        Repopulate();
+    }
+
+    private void ToggleSearch()
+    {
+        if (SearchPanel.Visible)
+            CloseSearch();
+        else
+            OpenSearch();
+    }
+
+    private void OpenSearch()
+    {
+        SearchPanel.Visible = true;
+        ChatSearch.FocusSearch();
+    }
+
+    private void CloseSearch()
+    {
+        if (!SearchPanel.Visible)
+            return;
+
+        SearchPanel.Visible = false;
+        ChatSearch.SearchInput.Clear();
+        _searchController.ClearSearch(this);
+    }
+
+    private void OnSearchTextChanged(string query)
+    {
+        _searchController.SetSearch(this, query);
     }
 
     private void OnChannelFilter(ChatChannel channel, bool active)
@@ -255,5 +305,8 @@ public partial class ChatBox : UIWidget
         ChatInput.Input.OnKeyBindDown -= OnInputKeyBindDown;
         ChatInput.Input.OnTextChanged -= OnTextChanged;
         ChatInput.ChannelSelector.OnChannelSelect -= OnChannelSelect;
+        ChatInput.OnSearchButtonPressed -= ToggleSearch;
+        ChatSearch.OnSearchChanged -= OnSearchTextChanged;
+        ChatSearch.OnSearchClosed -= CloseSearch;
     }
 }
