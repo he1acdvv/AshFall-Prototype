@@ -6,6 +6,7 @@ using Robust.Client.UserInterface;
 using Robust.Client.UserInterface.Controls;
 using Robust.Client.UserInterface.RichText;
 using Robust.Shared.Collections;
+using Robust.Shared.Log;
 using Robust.Shared.Utility;
 
 namespace Content.Client.Ashfall.UI.Chat.Controls;
@@ -349,9 +350,10 @@ public struct CustomRichTextEntry
         {
             tag.PopDrawContext(node, context);
         }
-        catch
+        catch (Exception e)
         {
-            throw new Exception($"Bad closing tag for {node.Name}");
+            Logger.GetSawmill("custom_rich_text").Warning($"Bad closing tag for {node.Name}: {e}");
+            return "";
         }
         return tag.TextAfter(node);
     }

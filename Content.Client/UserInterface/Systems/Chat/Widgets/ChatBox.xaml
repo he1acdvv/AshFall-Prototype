@@ -9,7 +9,7 @@
     VerticalExpand="True"
     MinSize="465 225">
     <PanelContainer Name="ChatWindowPanel" Access="Public" HorizontalExpand="True" VerticalExpand="True"
-                    StyleClasses="StyleNano.StyleClassChatPanel">
+                    StyleClasses="ChatPanel">
         <BoxContainer Orientation="Vertical" SeparationOverride="4" HorizontalExpand="True" VerticalExpand="True">
             <PanelContainer Name="SearchPanel" Access="Public" Visible="False" HorizontalExpand="True" Margin="8 8 8 0">
                 <BoxContainer Orientation="Vertical" SeparationOverride="4" HorizontalExpand="True">

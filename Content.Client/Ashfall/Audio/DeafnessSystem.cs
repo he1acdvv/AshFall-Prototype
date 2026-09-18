@@ -149,7 +149,18 @@ public sealed partial class DeafnessSystem : EntitySystem
         {
             // Muffled state during peak tinnitus
             targetMasterVolume = 0.06f * _originalVolume;
-            if (_loopStream != null)
+            if (_loopStream == null && _inLoop)
+            {
+                // Deafness was extended after the outro played: restart the loop.
+                _playedEnd = false;
+                StopSound(ref _endStream);
+                _loopStream = _audioSystem.PlayGlobal(
+                    new SoundPathSpecifier("/Audio/Ashfall/Effects/tinnitus_loop.ogg"),
+                    Filter.Local(),
+                    false,
+                    AudioParams.Default.WithVolume(SharedAudioSystem.GainToVolume(BaseTinnitusGain * 0.85f)).WithLoop(true));
+            }
+            else if (_loopStream != null)
             {
                 _audioSystem.SetVolume(_loopStream.Value.Entity, SharedAudioSystem.GainToVolume(BaseTinnitusGain * 0.85f), _loopStream.Value.Component);
             }
