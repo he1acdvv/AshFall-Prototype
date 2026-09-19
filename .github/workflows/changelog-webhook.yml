@@ -1,0 +1,143 @@
+name: Changelog Discord Webhook
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+jobs:
+  send-changelog:
+    # Запуск только при успешном слиянии (merge) PR в master
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse changelog and dispatch to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_CHANGELOG_WEBHOOK }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_AUTHOR_AVATAR: ${{ github.event.pull_request.user.avatar_url }}
+        run: |
+          python3 - << 'PYEOF'
+          import json
+          import os
+          import re
+          import urllib.request
+
+          # Цвет боковой полосы карточки (#907036)
+          EMBED_COLOR = 0x907036
+
+          webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+          if not webhook_url:
+              print("Секрет DISCORD_CHANGELOG_WEBHOOK не найден или пуст. Пропуск отправки.")
+              exit(0)
+
+          pr_body = os.environ.get("PR_BODY", "")
+          pr_url = os.environ.get("PR_URL", "")
+          pr_title = os.environ.get("PR_TITLE", "")
+          pr_number = os.environ.get("PR_NUMBER", "")
+          pr_author = os.environ.get("PR_AUTHOR", "")
+          pr_author_avatar = os.environ.get("PR_AUTHOR_AVATAR", "")
+
+          # Очищаем от HTML-комментариев
+          clean_body = re.sub(r"<!--[\s\S]*?-->", "", pr_body)
+
+          # Ищем блок чейнджлога
+          match = re.search(r"(##\s*(?:Чейнджлог|Changelog)[\s\S]*|:cl:[\s\S]*)", clean_body, re.IGNORECASE)
+          if not match:
+              print("Секция чейнджлога не найдена. Пропуск.")
+              exit(0)
+
+          raw_section = match.group(1).strip()
+          m_header = re.match(r"(##\s*(?:Чейнджлог|Changelog)[\s\S]*?)(?=\n##\s+|$)", raw_section, re.IGNORECASE)
+          if m_header:
+              raw_section = m_header.group(1).strip()
+
+          if ":cl:" not in raw_section:
+              print("Метка :cl: не найдена. Пропуск.")
+              exit(0)
+
+          # Парсим строки и добавляем эмодзи
+          lines = raw_section.splitlines()
+          formatted_lines = []
+          has_entries = False
+
+          for line in lines:
+              stripped = line.strip()
+              if not stripped or stripped.lower().startswith("##"):
+                  continue
+
+              # Строка автора :cl:
+              m_cl = re.match(r"^:cl:\s*(.*)", stripped, re.IGNORECASE)
+              if m_cl:
+                  author = m_cl.group(1).strip()
+                  formatted_lines.append(f":cl: **{author}**" if author else ":cl:")
+                  continue
+
+              # Пункты чейнджлога
+              m_entry = re.match(r"^[-*]\s*([a-zA-Zа-яА-Я]+)\s*:\s*(.*)", stripped)
+              if m_entry:
+                  tag = m_entry.group(1).lower()
+                  rest = m_entry.group(2).strip()
+                  has_entries = True
+                  if tag in ("add", "добавлено"):
+                      formatted_lines.append(f"✨ **add:** {rest}")
+                  elif tag in ("fix", "исправлено"):
+                      formatted_lines.append(f"🛠️ **fix:** {rest}")
+                  elif tag in ("tweak", "изменено"):
+                      formatted_lines.append(f"⚙️ **tweak:** {rest}")
+                  elif tag in ("remove", "удалено"):
+                      formatted_lines.append(f"🗑️ **remove:** {rest}")
+                  else:
+                      formatted_lines.append(f"🔹 **{tag}:** {rest}")
+              elif stripped.startswith(("-", "*")):
+                  clean_item = stripped.lstrip("-* ")
+                  has_entries = True
+                  formatted_lines.append(f"🔹 {clean_item}")
+              else:
+                  formatted_lines.append(stripped)
+
+          if not has_entries:
+              print("В чейнджлоге нет пунктов изменений. Пропуск.")
+              exit(0)
+
+          description = "\n".join(formatted_lines)
+
+          payload = {
+              "embeds": [
+                  {
+                      "title": f"PR #{pr_number}: {pr_title}",
+                      "url": pr_url,
+                      "description": description,
+                      "color": EMBED_COLOR,
+                      "author": {
+                          "name": pr_author,
+                          "icon_url": pr_author_avatar,
+                          "url": f"https://github.com/{pr_author}"
+                      },
+                      "footer": {
+                          "text": "Ashfall • Merged"
+                      }
+                  }
+              ]
+          }
+
+          req = urllib.request.Request(
+              webhook_url,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Content-Type": "application/json",
+                  "User-Agent": "Ashfall-Webhook-Dispatcher"
+              }
+          )
+
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  print(f"Оповещение успешно отправлено! Код: {resp.status}")
+          except Exception as e:
+              print(f"Ошибка при отправке вебхука в Discord: {e}")
+              raise e
+          PYEOF
