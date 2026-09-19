@@ -27,7 +27,7 @@ jobs:
           import re
           import urllib.request
 
-          # Цвет боковой полосы карточки (#907036)
+          # Цвет полосы карточки Discord Embed (#907036)
           EMBED_COLOR = 0x907036
 
           webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
@@ -42,7 +42,7 @@ jobs:
           pr_author = os.environ.get("PR_AUTHOR", "")
           pr_author_avatar = os.environ.get("PR_AUTHOR_AVATAR", "")
 
-          # Очищаем от HTML-комментариев
+          # Очищаем от HTML-комментариев (включая закомментированный шаблон)
           clean_body = re.sub(r"<!--[\s\S]*?-->", "", pr_body)
 
           # Ищем блок чейнджлога
@@ -60,51 +60,81 @@ jobs:
               print("Метка :cl: не найдена. Пропуск.")
               exit(0)
 
-          # Парсим строки и добавляем эмодзи
+          # Группируем пункты изменений по категориям для удобного чтения
           lines = raw_section.splitlines()
-          formatted_lines = []
-          has_entries = False
+          output_blocks = []
+          current_author = None
+          categories = {"add": [], "tweak": [], "fix": [], "remove": [], "other": []}
+          total_entries = 0
+
+          def flush_author():
+              nonlocal current_author, categories
+              if not current_author and not any(categories.values()):
+                  return
+              block = []
+              if current_author:
+                  block.append(f":cl: **{current_author}**\n")
+
+              labels = [
+                  ("add", "✨ **Добавлено:**"),
+                  ("tweak", "⚙️ **Изменено:**"),
+                  ("fix", "🛠️ **Исправлено:**"),
+                  ("remove", "🗑️ **Удалено:**"),
+                  ("other", "🔹 **Прочее:**")
+              ]
+              for key, title in labels:
+                  items = categories[key]
+                  if items:
+                      block.append(title)
+                      for item in items:
+                          block.append(f"• {item}")
+                      block.append("")
+
+              output_blocks.append("\n".join(block).strip())
+              categories = {"add": [], "tweak": [], "fix": [], "remove": [], "other": []}
+              current_author = None
 
           for line in lines:
               stripped = line.strip()
               if not stripped or stripped.lower().startswith("##"):
                   continue
 
-              # Строка автора :cl:
               m_cl = re.match(r"^:cl:\s*(.*)", stripped, re.IGNORECASE)
               if m_cl:
-                  author = m_cl.group(1).strip()
-                  formatted_lines.append(f":cl: **{author}**" if author else ":cl:")
+                  flush_author()
+                  current_author = m_cl.group(1).strip()
                   continue
 
-              # Пункты чейнджлога
               m_entry = re.match(r"^[-*]\s*([a-zA-Zа-яА-Я]+)\s*:\s*(.*)", stripped)
               if m_entry:
                   tag = m_entry.group(1).lower()
                   rest = m_entry.group(2).strip()
-                  has_entries = True
+                  total_entries += 1
                   if tag in ("add", "добавлено"):
-                      formatted_lines.append(f"✨ **add:** {rest}")
-                  elif tag in ("fix", "исправлено"):
-                      formatted_lines.append(f"🛠️ **fix:** {rest}")
+                      categories["add"].append(rest)
                   elif tag in ("tweak", "изменено"):
-                      formatted_lines.append(f"⚙️ **tweak:** {rest}")
+                      categories["tweak"].append(rest)
+                  elif tag in ("fix", "исправлено"):
+                      categories["fix"].append(rest)
                   elif tag in ("remove", "удалено"):
-                      formatted_lines.append(f"🗑️ **remove:** {rest}")
+                      categories["remove"].append(rest)
                   else:
-                      formatted_lines.append(f"🔹 **{tag}:** {rest}")
+                      categories["other"].append(f"**{tag}:** {rest}")
               elif stripped.startswith(("-", "*")):
-                  clean_item = stripped.lstrip("-* ")
-                  has_entries = True
-                  formatted_lines.append(f"🔹 {clean_item}")
-              else:
-                  formatted_lines.append(stripped)
+                  categories["other"].append(stripped.lstrip("-* "))
+                  total_entries += 1
+              elif current_author or any(categories.values()):
+                  last_cat = next((k for k in reversed(list(categories.keys())) if categories[k]), None)
+                  if last_cat:
+                      categories[last_cat][-1] += " " + stripped
 
-          if not has_entries:
-              print("В чейнджлоге нет пунктов изменений. Пропуск.")
+          flush_author()
+
+          if total_entries == 0:
+              print("В чейнджлоге отсутствуют пункты изменений. Пропуск.")
               exit(0)
 
-          description = "\n".join(formatted_lines)
+          description = "\n\n".join(output_blocks)
 
           payload = {
               "embeds": [
@@ -117,9 +147,6 @@ jobs:
                           "name": pr_author,
                           "icon_url": pr_author_avatar,
                           "url": f"https://github.com/{pr_author}"
-                      },
-                      "footer": {
-                          "text": "Ashfall • Merged"
                       }
                   }
               ]
@@ -136,8 +163,8 @@ jobs:
 
           try:
               with urllib.request.urlopen(req) as resp:
-                  print(f"Оповещение успешно отправлено! Код: {resp.status}")
+                  print(f"Оповещение успешно отправлено! Код ответа: {resp.status}")
           except Exception as e:
-              print(f"Ошибка при отправке вебхука в Discord: {e}")
+              print(f"Ошибка при отправке в Discord: {e}")
               raise e
           PYEOF
