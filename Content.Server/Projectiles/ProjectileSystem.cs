@@ -9,6 +9,7 @@ using Content.Shared.Damage.Systems;
 using Content.Shared.Database;
 using Content.Shared.FixedPoint;
 using Content.Shared.Projectiles;
+using Robust.Shared.Physics.Components;
 using Robust.Shared.Physics.Events;
 using Robust.Shared.Player;
 
@@ -36,7 +37,17 @@ public sealed partial class ProjectileSystem : SharedProjectileSystem
             || component.ProjectileSpent || component is { Weapon: null, OnlyCollideWhenShot: true })
             return;
 
-        var target = args.OtherEntity;
+        DoHit(uid, args.OtherEntity, component, args.OurBody);
+    }
+
+    public void DoHit(EntityUid uid, EntityUid target, ProjectileComponent? component = null, PhysicsComponent? ourBody = null)
+    {
+        if (!Resolve(uid, ref component))
+            return;
+
+        if (component.ProjectileSpent)
+            return;
+
         // it's here so this check is only done once before possible hit
         var attemptEv = new ProjectileReflectAttemptEvent(uid, component, false);
         RaiseLocalEvent(target, ref attemptEv);
@@ -74,7 +85,6 @@ public sealed partial class ProjectileSystem : SharedProjectileSystem
                 LogImpact.Medium,
                 $"Projectile {ToPrettyString(uid):projectile} shot by {shotByString} hit {otherName:target} and dealt {damage:damage} damage");
 
-
             component.ProjectileSpent = !TryPenetrate((uid, component), damage, damageRequired);
         }
         else
@@ -86,8 +96,9 @@ public sealed partial class ProjectileSystem : SharedProjectileSystem
         {
             _guns.PlayImpactSound(target, damage, component.SoundHit, component.ForceSound);
 
-            if (!args.OurBody.LinearVelocity.IsLengthZero())
-                _sharedCameraRecoil.KickCamera(target, args.OurBody.LinearVelocity.Normalized());
+            ourBody ??= CompOrNull<PhysicsComponent>(uid);
+            if (ourBody != null && !ourBody.LinearVelocity.IsLengthZero())
+                _sharedCameraRecoil.KickCamera(target, ourBody.LinearVelocity.Normalized());
         }
 
         if (component.DeleteOnCollide && component.ProjectileSpent)

@@ -232,16 +232,8 @@ namespace Content.Client.Lobby.UI
 
             #region SpawnPriority
 
-            foreach (var value in Enum.GetValues<SpawnPriorityPreference>())
-            {
-                SpawnPriorityButton.AddItem(Loc.GetString($"humanoid-profile-editor-preference-spawn-priority-{value.ToString().ToLower()}"), (int)value);
-            }
-
-            SpawnPriorityButton.OnItemSelected += args =>
-            {
-                SpawnPriorityButton.SelectId(args.Id);
-                SetSpawnPriority((SpawnPriorityPreference)args.Id);
-            };
+            SpawnPriorityButton.AddItem(Loc.GetString($"humanoid-profile-editor-preference-spawn-priority-{SpawnPriorityPreference.Cryosleep.ToString().ToLower()}"), (int)SpawnPriorityPreference.Cryosleep);
+            SpawnPriorityButton.Disabled = true;
 
             #endregion SpawnPriority
 

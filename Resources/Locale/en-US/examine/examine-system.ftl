@@ -9,3 +9,5 @@ examine-verb-name = Basic
 examinable-anchored = It is [color=darkgreen]anchored[/color] to the floor.
 
 examinable-unanchored = It is [color=darkred]unanchored[/color] from the floor.
+
+examine-present-tex = This is [enttex id={$id} size={ $size }/] [bold]{$name}[/bold]

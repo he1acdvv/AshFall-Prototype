@@ -16,6 +16,8 @@
     - HEAD
     - EARS
     - NECK
+  - type: EarProtection
+    protection: 0.95
   - type: ToggleableVisuals
     spriteLayer: enum.ToggleableVisuals.Layer
     clothingVisuals:

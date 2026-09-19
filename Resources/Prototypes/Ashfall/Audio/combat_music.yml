@@ -3,6 +3,7 @@
 - type: soundCollection
   id: CombatMusicScavenger
   files:
+  - "/Audio/Ashfall/Ambience/Combat/Peril.ogg"
   - "/Audio/Ashfall/Ambience/Combat/SAW_1.ogg"
   - "/Audio/Ashfall/Ambience/Combat/SAW_2.ogg"
   - "/Audio/Ashfall/Ambience/Combat/COMBAT_quarrel.ogg"

@@ -23,6 +23,9 @@ public sealed partial class BlurryVisionComponent : Component
     [ViewVariables(VVAccess.ReadWrite), DataField("correctionPower"), AutoNetworkedField]
     public float CorrectionPower;
 
+    [ViewVariables(VVAccess.ReadWrite), DataField("blurEndTime", customTypeSerializer: typeof(Robust.Shared.Serialization.TypeSerializers.Implementations.Custom.TimeOffsetSerializer)), AutoNetworkedField]
+    public TimeSpan? BlurEndTime;
+
     public const float MaxMagnitude = 6;
     public const float DefaultCorrectionPower = 2f;
 }

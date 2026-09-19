@@ -30,8 +30,8 @@
   maskPath: /Textures/_ECHO/Effects/LightMasks/cone_composed_b.png
   lightCones:
   - direction: 0
-    innerWidth: 30
-    outerWidth: 60
+    innerWidth: 20
+    outerWidth: 70
 
 - type: lightMask
   id: ThrusterLight

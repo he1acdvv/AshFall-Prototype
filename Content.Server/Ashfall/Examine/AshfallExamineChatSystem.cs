@@ -32,15 +32,34 @@ public sealed partial class AshfallExamineChatSystem : EntitySystem
         if (string.IsNullOrWhiteSpace(markup))
             return;
 
-        var rawMessage = FormattedMessage.RemoveMarkupPermissive(markup);
+        var netEnt = GetNetEntity(uid);
+        var name = FormattedMessage.EscapeText(component.EntityName);
+        var title = Loc.GetString("examine-present-tex",
+            ("name", name),
+            ("id", netEnt.Id),
+            ("size", 14));
+
+        FormattedMessage chatMsg = new();
+        chatMsg.PushTag(new MarkupNode("examineborder", null, null));
+        chatMsg.AddMarkupPermissive($"[color=#cfd3dc][font size=11]{title}[/font][/color]");
+        chatMsg.PushNewline();
+        chatMsg.PushColor(Color.FromHex("#2d333b"));
+        chatMsg.AddText(Loc.GetString("examine-border-line"));
+        chatMsg.PushNewline();
+        chatMsg.Pop();
+        chatMsg.AddMarkupPermissive($"[color=#B0B5BD]{markup}[/color]");
+        chatMsg.Pop();
+
+        var wrappedMarkup = chatMsg.ToMarkup();
+        var rawMessage = FormattedMessage.RemoveMarkupPermissive(wrappedMarkup);
 
         _chatManager.ChatMessageToOne(
             ChatChannel.Examine,
             rawMessage,
-            markup,
+            wrappedMarkup,
             default,
             hideChat: false,
             client: channel,
-            colorOverride: Color.FromHex("#A3A8A3"));
+            colorOverride: Color.FromHex("#cfd3dc"));
     }
 }

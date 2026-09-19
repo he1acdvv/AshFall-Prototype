@@ -118,7 +118,7 @@ public sealed partial class AshfallMemorySystem : EntitySystem
         for (var i = 1; i <= 5; i++)
         {
             var key = $"ashfall-memory-hint-{i}";
-            if (Loc.TryGetString(key, out _))
+            if (Loc.HasString(key))
                 _hintLines.Add(key);
         }
     }

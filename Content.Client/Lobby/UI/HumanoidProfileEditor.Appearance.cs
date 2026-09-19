@@ -172,7 +172,12 @@ public sealed partial class HumanoidProfileEditor
             return;
         }
 
-        SpawnPriorityButton.SelectId((int)Profile.SpawnPriority);
+        if (Profile.SpawnPriority != SpawnPriorityPreference.Cryosleep)
+        {
+            SetSpawnPriority(SpawnPriorityPreference.Cryosleep);
+        }
+
+        SpawnPriorityButton.SelectId((int)SpawnPriorityPreference.Cryosleep);
     }
 
     /// <summary>

@@ -67,9 +67,18 @@ public sealed partial class PullingSystem
         if (ent.Comp.GrabStage != GrabStage.Suffocate)
             return;
 
-        // both hands are wrapped around the victim's throat, no punching or weapon swings
+        // If clicking on the choked victim, allow attack attempt so TryGrab can deal choke stamina damage
+        if (args.Target == ent.Comp.Pulling)
+            return;
+
+        // both hands are wrapped around the victim's throat, no punching or weapon swings at other targets/air
         args.Cancel();
-        _popup.PopupClient(Loc.GetString("popup-grab-hands-busy"), ent, ent, PopupType.Medium);
+
+        if (_timing.CurTime > ent.Comp.NextBusyPopup)
+        {
+            ent.Comp.NextBusyPopup = _timing.CurTime + TimeSpan.FromSeconds(1.5);
+            _popup.PopupClient(Loc.GetString("popup-grab-hands-busy"), ent, ent, PopupType.Medium);
+        }
     }
 
     private void OnVirtualItemThrown(EntityUid uid, PullerComponent component, ref VirtualItemThrownEvent args)

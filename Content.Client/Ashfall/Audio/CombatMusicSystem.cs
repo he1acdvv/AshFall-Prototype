@@ -348,6 +348,17 @@ public sealed partial class CombatMusicSystem : EntitySystem
         if (_preparedCollection == collectionId && _preparedTrack != null)
             return _preparedTrack;
 
+        if (collectionId == ScavengerMusicCollection && _lastPlayedTrack == null)
+        {
+            const string defaultTrack = "/Audio/Ashfall/Ambience/Combat/Peril.ogg";
+            if (_resourceCache.TryGetResource<AudioResource>(defaultTrack, out _))
+            {
+                _preparedCollection = collectionId;
+                _preparedTrack = defaultTrack;
+                return defaultTrack;
+            }
+        }
+
         if (!_proto.TryIndex<SoundCollectionPrototype>(collectionId, out var soundCollection) ||
             soundCollection.PickFiles.Count == 0)
         {

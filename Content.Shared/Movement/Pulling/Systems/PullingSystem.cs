@@ -563,7 +563,7 @@ public sealed partial class PullingSystem : EntitySystem
         if (TryGrab((pullable, pullable.Comp), pullerUid))
             return true;
 
-        if (!_combatMode.IsInCombatMode(pullable))
+        if (!_combatMode.IsInCombatMode(pullerUid))
             return TryStopPull(pullable, pullable.Comp, ignoreGrab: true);
 
         return false;

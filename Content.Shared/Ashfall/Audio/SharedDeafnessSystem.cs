@@ -7,7 +7,8 @@ using Robust.Shared.Timing;
 
 namespace Content.Shared.Ashfall.Audio;
 
-public sealed partial class SharedDeafnessSystem : EntitySystem
+[Virtual]
+public partial class SharedDeafnessSystem : EntitySystem
 {
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private InventorySystem _inventory = default!;
@@ -24,7 +25,7 @@ public sealed partial class SharedDeafnessSystem : EntitySystem
         if (TryComp<EarProtectionComponent>(uid, out var selfProt) && selfProt.Protection >= 0.8f)
             return true;
 
-        if (_inventory.TryGetContainerSlotEnumerator(uid, out var slots))
+        if (_inventory.TryGetContainerSlotEnumerator(uid, out var slots, SlotFlags.EARS | SlotFlags.HEAD))
         {
             while (slots.NextItem(out var item, out _))
             {
@@ -36,7 +37,7 @@ public sealed partial class SharedDeafnessSystem : EntitySystem
         return false;
     }
 
-    public bool TryDeafen(EntityUid uid, TimeSpan duration, bool ignoreProtection = false)
+    public bool TryDeafen(EntityUid uid, TimeSpan duration, bool ignoreProtection = false, bool showPopup = true)
     {
         if (duration <= TimeSpan.Zero)
             return false;
@@ -56,7 +57,7 @@ public sealed partial class SharedDeafnessSystem : EntitySystem
             Dirty(uid, comp);
         }
 
-        if (isNew && _net.IsServer)
+        if (isNew && showPopup && _net.IsServer)
         {
             _popup.PopupEntity(Loc.GetString("gun-deafened-ringing"), uid, uid, PopupType.MediumCaution);
         }
