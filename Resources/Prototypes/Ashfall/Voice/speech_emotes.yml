@@ -43,3 +43,60 @@
   - миу
   - мьяу
   - миау
+
+- type: emote
+  id: Flip
+  name: chat-emote-name-flip
+  category: Hands
+  chatMessages: ["chat-emote-msg-flip"]
+  chatTriggers:
+  - flip
+  - flips
+  - сальто
+  - кувырок
+
+- type: emote
+  id: Jump
+  name: chat-emote-name-jump
+  category: Hands
+  chatMessages: ["chat-emote-msg-jump"]
+  chatTriggers:
+  - jump
+  - jumps
+  - прыгает
+  - подпрыгивает
+  - прыжок
+
+- type: emote
+  id: Spin
+  name: chat-emote-name-spin
+  category: Hands
+  chatMessages: ["chat-emote-msg-spin"]
+  chatTriggers:
+  - spin
+  - spins
+  - кружится
+  - вертится
+
+- type: emote
+  id: Tremble
+  name: chat-emote-name-tremble
+  category: Hands
+  chatMessages: ["chat-emote-msg-tremble"]
+  chatTriggers:
+  - tremble
+  - shiver
+  - shudder
+  - дрожит
+  - трясется
+
+- type: emote
+  id: TailWag
+  name: chat-emote-name-tail-wag
+  category: Hands
+  chatMessages: ["chat-emote-msg-tail-wag"]
+  chatTriggers:
+  - wag
+  - wags
+  - виляет хвостом
+  - виляет

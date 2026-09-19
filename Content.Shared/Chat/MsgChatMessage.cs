@@ -37,11 +37,13 @@ namespace Content.Shared.Chat
         public Color? MessageColorOverride;
         public string? AudioPath;
         public float AudioVolume;
+        public string? SpeechStyleClass;
+        public string? LanguageIcon;
 
         [NonSerialized]
         public bool Read;
 
-        public ChatMessage(ChatChannel channel, string message, string wrappedMessage, NetEntity source, int? senderKey, bool hideChat = false, Color? colorOverride = null, string? audioPath = null, float audioVolume = 0)
+        public ChatMessage(ChatChannel channel, string message, string wrappedMessage, NetEntity source, int? senderKey, bool hideChat = false, Color? colorOverride = null, string? audioPath = null, float audioVolume = 0, string? speechStyleClass = null, string? languageIcon = null)
         {
             Channel = channel;
             Message = message;
@@ -52,6 +54,8 @@ namespace Content.Shared.Chat
             MessageColorOverride = colorOverride;
             AudioPath = audioPath;
             AudioVolume = audioVolume;
+            SpeechStyleClass = speechStyleClass;
+            LanguageIcon = languageIcon;
         }
 
         public ChatMessage(ChatMessage copyFrom)
@@ -65,6 +69,8 @@ namespace Content.Shared.Chat
             MessageColorOverride = copyFrom.MessageColorOverride;
             AudioPath = copyFrom.AudioPath;
             AudioVolume = copyFrom.AudioVolume;
+            SpeechStyleClass = copyFrom.SpeechStyleClass;
+            LanguageIcon = copyFrom.LanguageIcon;
             Read = copyFrom.Read;
         }
     }

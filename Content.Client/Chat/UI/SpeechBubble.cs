@@ -1,12 +1,18 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using Content.Client.Chat.Managers;
 using Content.Shared.CCVar;
 using Content.Shared.Chat;
 using Content.Shared.Speech;
+using Content.Shared.Stealth;
+using Content.Shared.Stealth.Components;
+using Robust.Client.GameObjects;
 using Robust.Client.Graphics;
+using Robust.Client.ResourceManagement;
 using Robust.Client.UserInterface;
 using Robust.Client.UserInterface.Controls;
 using Robust.Shared.Configuration;
+using Robust.Shared.Prototypes;
 using Robust.Shared.Timing;
 using Robust.Shared.Utility;
 
@@ -16,8 +22,10 @@ namespace Content.Client.Chat.UI
     {
         [Dependency] private IGameTiming _timing = default!;
         [Dependency] private IEyeManager _eyeManager = default!;
-        [Dependency] private IEntityManager _entityManager = default!;
+        [Dependency] protected IEntityManager _entityManager = default!;
         [Dependency] protected IConfigurationManager ConfigManager = default!;
+        [Dependency] protected IPrototypeManager _prototypeManager = default!;
+        [Dependency] protected IResourceCache _resourceCache = default!;
         private readonly SharedTransformSystem _transformSystem;
 
         public enum SpeechType : byte
@@ -56,6 +64,9 @@ namespace Content.Client.Chat.UI
         /// </summary>
         private TimeSpan _deathTime;
 
+        private bool _dying;
+        private bool _dead;
+
         public float VerticalOffset { get; set; }
         private float _verticalOffsetAchieved;
 
@@ -90,6 +101,7 @@ namespace Content.Client.Chat.UI
             IoCManager.InjectDependencies(this);
             _senderEntity = senderEntity;
             _transformSystem = _entityManager.System<SharedTransformSystem>();
+            MouseFilter = MouseFilterMode.Ignore;
 
             // Use text clipping so new messages don't overlap old ones being pushed up.
             RectClipContent = true;
@@ -108,6 +120,38 @@ namespace Content.Client.Chat.UI
 
         protected abstract Control BuildBubble(ChatMessage message, string speechStyleClass, Color? fontColor = null);
 
+        protected virtual Vector2 GetWorldPositionOffset(EntityUid senderEntity, TransformComponent xform)
+        {
+            return Vector2.Zero;
+        }
+
+        protected virtual Vector2 GetScreenPositionOffset(EntityUid senderEntity, TransformComponent xform)
+        {
+            return Vector2.Zero;
+        }
+
+        protected virtual float GetSenderVisibilityAlpha()
+        {
+            var alpha = 1f;
+
+            if (_entityManager.TryGetComponent<SpriteComponent>(_senderEntity, out var sprite))
+            {
+                if (!sprite.Visible && _entityManager.IsClientSide(_senderEntity))
+                    return 0f;
+
+                alpha = sprite.Color.A;
+            }
+
+            if (_entityManager.TryGetComponent<StealthComponent>(_senderEntity, out var stealth) && stealth.Enabled)
+            {
+                var stealthSys = _entityManager.System<SharedStealthSystem>();
+                var stealthAlpha = Math.Clamp(stealthSys.GetVisibility(_senderEntity, stealth), 0f, 1f);
+                alpha = Math.Min(alpha, stealthAlpha);
+            }
+
+            return alpha;
+        }
+
         protected override void FrameUpdate(FrameEventArgs args)
         {
             base.FrameUpdate(args);
@@ -116,7 +160,11 @@ namespace Content.Client.Chat.UI
             if (_entityManager.Deleted(_senderEntity) || timeLeft <= 0)
             {
                 // Timer spawn to prevent concurrent modification exception.
-                Timer.Spawn(0, Die);
+                if (!_dying)
+                {
+                    _dying = true;
+                    Timer.Spawn(0, Die);
+                }
                 return;
             }
 
@@ -136,15 +184,17 @@ namespace Content.Client.Chat.UI
                 return;
             }
 
+            var alpha = GetSenderVisibilityAlpha();
+
             if (timeLeft <= FadeTime.TotalSeconds)
             {
                 // Update alpha if we're fading.
-                Modulate = Color.White.WithAlpha(timeLeft / (float)FadeTime.TotalSeconds);
+                Modulate = Color.White.WithAlpha((timeLeft / (float)FadeTime.TotalSeconds) * alpha);
             }
             else
             {
                 // Make opaque otherwise, because it might have been hidden before
-                Modulate = Color.White;
+                Modulate = Color.White.WithAlpha(alpha);
             }
 
             var baseOffset = 0f;
@@ -153,9 +203,9 @@ namespace Content.Client.Chat.UI
                 baseOffset = speech.SpeechBubbleOffset;
 
             var offset = (-_eyeManager.CurrentEye.Rotation).ToWorldVec() * -(EntityVerticalOffset + baseOffset);
-            var worldPos = _transformSystem.GetWorldPosition(xform) + offset;
+            var worldPos = _transformSystem.GetWorldPosition(xform) + offset + GetWorldPositionOffset(_senderEntity, xform);
 
-            var lowerCenter = _eyeManager.WorldToScreen(worldPos) / UIScale;
+            var lowerCenter = _eyeManager.WorldToScreen(worldPos) / UIScale + GetScreenPositionOffset(_senderEntity, xform);
             var screenPos = lowerCenter - new Vector2(ContentSize.X / 2, ContentSize.Y + _verticalOffsetAchieved);
             // Round to nearest 0.5
             screenPos = (screenPos * 2).Rounded() / 2;
@@ -167,12 +217,14 @@ namespace Content.Client.Chat.UI
 
         private void Die()
         {
-            if (Disposed)
+            if (Disposed || _dead)
             {
                 return;
             }
 
+            _dead = true;
             OnDied?.Invoke(_senderEntity, this);
+            OnDied = null;
         }
 
         /// <summary>
@@ -200,6 +252,35 @@ namespace Content.Client.Chat.UI
             return FormatSpeech(SharedChatSystem.GetStringInsideTag(message, tag), fontColor);
         }
 
+        protected bool TryGetLanguageIcon(ChatMessage message, [NotNullWhen(true)] out Texture? texture)
+        {
+            texture = null;
+
+            if (string.IsNullOrEmpty(message.LanguageIcon))
+                return false;
+
+            if (_resourceCache.TryGetResource<TextureResource>(new ResPath(message.LanguageIcon), out var textureResource))
+            {
+                texture = textureResource.Texture;
+                return true;
+            }
+
+            if (_entityManager.EntitySysManager.TryGetEntitySystem<SpriteSystem>(out var spriteSystem))
+            {
+                try
+                {
+                    var specifier = new SpriteSpecifier.Rsi(new ResPath(message.LanguageIcon), "icon");
+                    texture = spriteSystem.Frame0(specifier);
+                    return true;
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+
+            return false;
+        }
     }
 
     public sealed class TextSpeechBubble : SpeechBubble
@@ -232,7 +313,6 @@ namespace Content.Client.Chat.UI
 
     public sealed class FancyTextSpeechBubble : SpeechBubble
     {
-
         public FancyTextSpeechBubble(ChatMessage message, EntityUid senderEntity, string speechStyleClass, Color? fontColor = null)
             : base(message, senderEntity, speechStyleClass, fontColor)
         {
@@ -240,20 +320,40 @@ namespace Content.Client.Chat.UI
 
         protected override Control BuildBubble(ChatMessage message, string speechStyleClass, Color? fontColor = null)
         {
+            if (speechStyleClass == "sayBox" && message.SpeechStyleClass != null)
+            {
+                speechStyleClass = message.SpeechStyleClass;
+            }
+
             if (!ConfigManager.GetCVar(CCVars.ChatEnableFancyBubbles))
             {
+                var container = new BoxContainer { Orientation = BoxContainer.LayoutOrientation.Horizontal };
+                if (TryGetLanguageIcon(message, out var iconTexture))
+                {
+                    var textureRect = new TextureRect
+                    {
+                        Texture = iconTexture,
+                        TextureScale = Vector2.One * 0.5f,
+                        VerticalAlignment = VAlignment.Center,
+                        Margin = new Thickness(0, 0, 4, 0)
+                    };
+                    container.AddChild(textureRect);
+                }
+
                 var label = new RichTextLabel
                 {
                     MaxWidth = SpeechMaxWidth,
+                    StyleClasses = { "bubbleContent" },
                     OutlineColorOverride = TextOutline.Default.Color,
                 };
 
                 label.SetMessage(ExtractAndFormatSpeechSubstring(message, "BubbleContent", fontColor));
+                container.AddChild(label);
 
                 var unfanciedPanel = new PanelContainer
                 {
                     StyleClasses = { "speechBox", speechStyleClass },
-                    Children = { label },
+                    Children = { container },
                     ModulateSelfOverride = Color.White.WithAlpha(ConfigManager.GetCVar(CCVars.SpeechBubbleBackgroundOpacity)),
                 };
                 return unfanciedPanel;
@@ -275,11 +375,23 @@ namespace Content.Client.Chat.UI
                 OutlineColorOverride = TextOutline.Default.Color,
             };
 
-            //We'll be honest. *Yes* this is hacky. Doing this in a cleaner way would require a bottom-up refactor of how saycode handles sending chat messages. -Myr
+            var headerContainer = new BoxContainer { Orientation = BoxContainer.LayoutOrientation.Horizontal };
+            if (TryGetLanguageIcon(message, out var headerIcon))
+            {
+                var iconTexture = new TextureRect
+                {
+                    Texture = headerIcon,
+                    TextureScale = Vector2.One * 0.5f,
+                    VerticalAlignment = VAlignment.Center,
+                    Margin = new Thickness(0, 0, 4, 0)
+                };
+                headerContainer.AddChild(iconTexture);
+            }
+
             bubbleHeader.SetMessage(ExtractAndFormatSpeechSubstring(message, "BubbleHeader", fontColor));
+            headerContainer.AddChild(bubbleHeader);
             bubbleContent.SetMessage(ExtractAndFormatSpeechSubstring(message, "BubbleContent", fontColor));
 
-            //As for below: Some day this could probably be converted to xaml. But that is not today. -Myr
             var mainPanel = new PanelContainer
             {
                 StyleClasses = { "speechBox", speechStyleClass },
@@ -293,7 +405,7 @@ namespace Content.Client.Chat.UI
             var headerPanel = new PanelContainer
             {
                 StyleClasses = { "speechBox", speechStyleClass },
-                Children = { bubbleHeader },
+                Children = { headerContainer },
                 ModulateSelfOverride = Color.White.WithAlpha(ConfigManager.GetCVar(CCVars.ChatFancyNameBackground) ? ConfigManager.GetCVar(CCVars.SpeechBubbleBackgroundOpacity) : 0f),
                 HorizontalAlignment = HAlignment.Center,
                 VerticalAlignment = VAlignment.Top

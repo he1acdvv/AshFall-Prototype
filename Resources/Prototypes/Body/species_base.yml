@@ -44,6 +44,7 @@
   - type: Footprint
   - type: CPRTraining
   - type: OfferItem
+  - type: EmoteAnimation
   - type: Carriable
   - type: RangedDamageSound
     soundGroups:
