@@ -134,7 +134,9 @@ jobs:
               print("В чейнджлоге отсутствуют пункты изменений. Пропуск.")
               exit(0)
 
-          description = "\n\n".join(output_blocks)
+          # Добавляем невидимый расширитель для максимальной ширины карточки в Discord
+          width_spacer = "\u2800" * 45
+          description = f"{'\n\n'.join(output_blocks)}\n{width_spacer}"
 
           payload = {
               "embeds": [
