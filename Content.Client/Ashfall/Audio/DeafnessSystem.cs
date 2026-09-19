@@ -22,19 +22,11 @@ public sealed partial class DeafnessSystem : EntitySystem
     [Dependency] private SharedAudioSystem _audioSystem = default!;
 
     private const float BaseTinnitusGain = 0.65f;
-    private const float StartSoundDuration = 0.55f;
     private const float FadeDuration = 2.0f;
 
     private float _originalVolume = 0.5f;
     private float _currentMasterGain = 0.5f;
-
-    private (EntityUid Entity, AudioComponent Component)? _startStream;
-    private (EntityUid Entity, AudioComponent Component)? _loopStream;
-    private (EntityUid Entity, AudioComponent Component)? _endStream;
-
-    private double _startTime;
-    private bool _inLoop;
-    private bool _playedEnd;
+    private (EntityUid Entity, AudioComponent Component)? _tinnitusStream;
 
     public override void Initialize()
     {
@@ -53,39 +45,20 @@ public sealed partial class DeafnessSystem : EntitySystem
     private void OnDeafShutdown(EntityUid uid, DeafenedComponent component, ComponentShutdown args)
     {
         if (_player.LocalEntity == uid)
-            ResetAudio(playOutro: true);
+            ResetAudio();
     }
 
     private void OnPlayerDetached(EntityUid uid, DeafenedComponent component, LocalPlayerDetachedEvent args)
     {
-        ResetAudio(playOutro: false);
+        ResetAudio();
     }
 
-    private void ResetAudio(bool playOutro)
+    private void ResetAudio()
     {
-        StopSound(ref _startStream);
-        StopSound(ref _loopStream);
-
-        if (playOutro && !_playedEnd && _inLoop)
+        if (_tinnitusStream != null)
         {
-            _playedEnd = true;
-            _endStream = _audioSystem.PlayGlobal(
-                new SoundPathSpecifier("/Audio/Ashfall/Effects/tinnitus_end.ogg"),
-                Filter.Local(),
-                false,
-                AudioParams.Default.WithVolume(SharedAudioSystem.GainToVolume(BaseTinnitusGain * 0.9f)));
-        }
-
-        _inLoop = false;
-        _startTime = 0;
-    }
-
-    private void StopSound(ref (EntityUid Entity, AudioComponent Component)? stream)
-    {
-        if (stream != null)
-        {
-            _audioSystem.Stop(stream.Value.Entity, stream.Value.Component);
-            stream = null;
+            _audioSystem.Stop(_tinnitusStream.Value.Entity, _tinnitusStream.Value.Component);
+            _tinnitusStream = null;
         }
     }
 
@@ -95,8 +68,8 @@ public sealed partial class DeafnessSystem : EntitySystem
 
         if (_player.LocalEntity is not { } player || !TryComp<DeafenedComponent>(player, out var deaf))
         {
-            if (_inLoop || _startStream != null)
-                ResetAudio(playOutro: true);
+            if (_tinnitusStream != null)
+                ResetAudio();
 
             // Smoothly restore master volume back to original
             if (MathF.Abs(_currentMasterGain - _originalVolume) > 0.005f)
@@ -112,79 +85,46 @@ public sealed partial class DeafnessSystem : EntitySystem
 
         if (timeLeft <= 0)
         {
-            ResetAudio(playOutro: true);
+            ResetAudio();
             _currentMasterGain = MathHelper.Lerp(_currentMasterGain, _originalVolume, MathF.Min(1f, 4.0f * frameTime));
             _audio.SetMasterGain(Math.Clamp(_currentMasterGain, 0f, _originalVolume));
             return;
         }
 
-        // Phase 1: Start (intro attack)
-        if (_startStream == null && !_inLoop)
+        if (_tinnitusStream == null)
         {
-            _startTime = curTime.TotalSeconds;
-            _playedEnd = false;
-            _startStream = _audioSystem.PlayGlobal(
-                new SoundPathSpecifier("/Audio/Ashfall/Effects/tinnitus_start.ogg"),
+            _tinnitusStream = _audioSystem.PlayGlobal(
+                new SoundPathSpecifier("/Audio/Ashfall/Effects/tinnitus_ring.ogg"),
                 Filter.Local(),
                 false,
-                AudioParams.Default.WithVolume(SharedAudioSystem.GainToVolume(BaseTinnitusGain)));
-            deaf.AudioStarted = true;
+                AudioParams.Default.WithVolume(SharedAudioSystem.GainToVolume(BaseTinnitusGain)).WithLoop(true));
+            deaf.AudioStarted = _tinnitusStream != null;
         }
 
-        // Transition from Start to Loop
-        if (!_inLoop && _startTime > 0 && (curTime.TotalSeconds - _startTime) >= StartSoundDuration)
-        {
-            StopSound(ref _startStream);
-            _inLoop = true;
-            _loopStream = _audioSystem.PlayGlobal(
-                new SoundPathSpecifier("/Audio/Ashfall/Effects/tinnitus_loop.ogg"),
-                Filter.Local(),
-                false,
-                AudioParams.Default.WithVolume(SharedAudioSystem.GainToVolume(BaseTinnitusGain * 0.85f)).WithLoop(true));
-        }
-
-        // Phase 3: Transition to ending tail
         float targetMasterVolume;
         if (timeLeft > FadeDuration)
         {
-            // Muffled state during peak tinnitus
-            targetMasterVolume = 0.06f * _originalVolume;
-            if (_loopStream == null && _inLoop)
+            targetMasterVolume = 0.05f * _originalVolume;
+            if (_tinnitusStream != null)
             {
-                // Deafness was extended after the outro played: restart the loop.
-                _playedEnd = false;
-                StopSound(ref _endStream);
-                _loopStream = _audioSystem.PlayGlobal(
-                    new SoundPathSpecifier("/Audio/Ashfall/Effects/tinnitus_loop.ogg"),
-                    Filter.Local(),
-                    false,
-                    AudioParams.Default.WithVolume(SharedAudioSystem.GainToVolume(BaseTinnitusGain * 0.85f)).WithLoop(true));
-            }
-            else if (_loopStream != null)
-            {
-                _audioSystem.SetVolume(_loopStream.Value.Entity, SharedAudioSystem.GainToVolume(BaseTinnitusGain * 0.85f), _loopStream.Value.Component);
+                _audioSystem.SetVolume(_tinnitusStream.Value.Entity, SharedAudioSystem.GainToVolume(BaseTinnitusGain), _tinnitusStream.Value.Component);
             }
         }
         else
         {
-            // Time left is below FadeDuration: trigger end outro tail once and stop loop
-            if (!_playedEnd && _inLoop)
+            var progress = Math.Clamp(timeLeft / FadeDuration, 0f, 1f);
+
+            var tinnitusGain = BaseTinnitusGain * (progress * progress);
+            var tinnitusVol = tinnitusGain > 0.005f ? SharedAudioSystem.GainToVolume(tinnitusGain) : float.NegativeInfinity;
+            if (_tinnitusStream != null)
             {
-                StopSound(ref _loopStream);
-                _playedEnd = true;
-                _endStream = _audioSystem.PlayGlobal(
-                    new SoundPathSpecifier("/Audio/Ashfall/Effects/tinnitus_end.ogg"),
-                    Filter.Local(),
-                    false,
-                    AudioParams.Default.WithVolume(SharedAudioSystem.GainToVolume(BaseTinnitusGain * 0.85f)));
+                _audioSystem.SetVolume(_tinnitusStream.Value.Entity, tinnitusVol, _tinnitusStream.Value.Component);
             }
 
-            var progress = Math.Clamp(timeLeft / FadeDuration, 0f, 1f);
             var masterFactor = 1.0f - (progress * progress);
-            targetMasterVolume = MathHelper.Lerp(0.06f * _originalVolume, _originalVolume, masterFactor);
+            targetMasterVolume = MathHelper.Lerp(0.05f * _originalVolume, _originalVolume, masterFactor);
         }
 
-        // Smooth master volume interpolation
         _currentMasterGain = MathHelper.Lerp(_currentMasterGain, targetMasterVolume, MathF.Min(1f, 6.0f * frameTime));
         _audio.SetMasterGain(Math.Clamp(_currentMasterGain, 0f, _originalVolume));
     }

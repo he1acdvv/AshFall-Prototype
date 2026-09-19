@@ -180,7 +180,7 @@ public sealed class AshfallCharacterGenerator
             voice,
             gender,
             appearance,
-            SpawnPriorityPreference.None,
+            SpawnPriorityPreference.Cryosleep,
             new Dictionary<ProtoId<JobPrototype>, JobPriority>(),
             PreferenceUnavailableMode.SpawnAsOverflow,
             new HashSet<ProtoId<AntagPrototype>>(),

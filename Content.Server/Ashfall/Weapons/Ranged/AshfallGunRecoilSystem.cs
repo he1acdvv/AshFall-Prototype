@@ -15,10 +15,13 @@ using Content.Shared.Weapons.Ranged.Systems;
 using Content.Shared.Wieldable;
 using Content.Shared.Wieldable.Components;
 using Content.Trauma.Shared.Knowledge.Systems;
+using Content.Server.Ashfall.Combat;
 using Content.Shared.Damage;
+using Content.Shared.Damage.Components;
 using Content.Shared.Damage.Systems;
 using Content.Shared.Eye.Blinding.Components;
 using Content.Shared.Eye.Blinding.Systems;
+using Content.Trauma.Shared.Weapons.Classes;
 using Robust.Shared.Audio;
 using Robust.Shared.Random;
 using Robust.Shared.Timing;
@@ -38,10 +41,9 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
     [Dependency] private EntityLookupSystem _lookup = default!;
     [Dependency] private IRobustRandom _random = default!;
     [Dependency] private IGameTiming _timing = default!;
-    [Dependency] private StatusEffectsSystem _statusEffects = default!;
+    [Dependency] private SuppressionSystem _suppression = default!;
     [Dependency] private DamageableSystem _damage = default!;
     [Dependency] private SharedStaminaSystem _stamina = default!;
-    [Dependency] private BlurryVisionSystem _blurryVision = default!;
 
     private readonly Dictionary<EntityUid, TimeSpan> _lastRecoilPopup = new();
 
@@ -93,18 +95,32 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
         var gunRotation = _transform.GetWorldRotation(gun);
         var impulseDir = -gunRotation.ToWorldVec().Normalized();
 
-        // Muzzle flash, blast blur with actual magnitude, and camera rumble on unskilled / heavy / unwielded shots
-        if (isHeavyGun || !isWielded || isUnskilled)
+        var isFirearm = IsFirearm(gun);
+
+        // Muzzle blast suppression (peripheral chromatic ripple and tunnel vignette) on firearms for unskilled / heavy / unwielded shots
+        if (isFirearm && (isHeavyGun || !isWielded || isUnskilled))
         {
-            _statusEffects.TryAddStatusEffectDuration(user, SharedFlashSystem.FlashedKey, TimeSpan.FromSeconds(0.18f));
-            _statusEffects.TryAddStatusEffectDuration(user, "StatusEffectBlurryVision", TimeSpan.FromSeconds(0.8f));
-            _blurryVision.SetBlurMagnitude(user, 3.5f, TimeSpan.FromSeconds(0.8f));
+            var suppAmount = isTwoHanded && !isWielded ? 0.40f : (isHeavyGun ? 0.28f : 0.18f);
+            if (HasEyeProtection(user))
+                suppAmount *= 0.5f;
+
+            _suppression.AddSuppression(user, suppAmount);
         }
 
         if (!isWielded || isUnskilled)
         {
-            var staminaCost = isTwoHanded && !isWielded ? 18f : (isHeavyGun ? 14f : 10f);
-            _stamina.TakeStaminaDamage(user, staminaCost);
+            var staminaCost = isTwoHanded && !isWielded ? 6f : (isHeavyGun ? 4f : 2.5f);
+            if (TryComp<StaminaComponent>(user, out var stamina))
+            {
+                // Never push user below 30% stamina from recoil alone (prevent falling into stamina crit)
+                var maxAllowedDamage = stamina.CritThreshold * 0.70f;
+                if (stamina.StaminaDamage < maxAllowedDamage)
+                {
+                    var actualCost = MathF.Min(staminaCost, maxAllowedDamage - stamina.StaminaDamage);
+                    if (actualCost > 0)
+                        _stamina.TakeStaminaDamage(user, actualCost, stamina);
+                }
+            }
         }
 
         // Case 1: Two-handed weapon fired single-handed (unwielded)
@@ -176,6 +192,9 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
 
     private void HandleTinnitus(Entity<GunComponent> gun, EntityUid user)
     {
+        if (!IsFirearm(gun))
+            return;
+
         if (IsSuppressed(gun.Comp))
             return;
 
@@ -194,6 +213,38 @@ public sealed partial class AshfallGunRecoilSystem : EntitySystem
 
             _deafness.TryDeafen(entity, TimeSpan.FromSeconds(8.0f), showPopup: true);
         }
+    }
+
+    private bool HasEyeProtection(EntityUid user)
+    {
+        var ev = new FlashAttemptEvent(user, null, null);
+        RaiseLocalEvent(user, ref ev);
+        return ev.Cancelled;
+    }
+
+    private bool IsFirearm(Entity<GunComponent> gun)
+    {
+        if (TryComp<WeaponClassComponent>(gun, out var weaponClass))
+        {
+            if (weaponClass.Class == "Laser" || weaponClass.Class == "Energy")
+                return false;
+        }
+
+        if (HasComp<BatteryAmmoProviderComponent>(gun) ||
+            HasComp<RechargeBasicEntityAmmoComponent>(gun))
+        {
+            return false;
+        }
+
+        var sound = gun.Comp.SoundGunshot?.ToString();
+        if (sound != null &&
+            (sound.Contains("laser", StringComparison.OrdinalIgnoreCase) ||
+             sound.Contains("kinetic", StringComparison.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private bool IsSuppressed(GunComponent gun)

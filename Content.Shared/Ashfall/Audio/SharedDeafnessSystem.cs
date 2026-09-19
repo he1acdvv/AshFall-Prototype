@@ -25,7 +25,7 @@ public partial class SharedDeafnessSystem : EntitySystem
         if (TryComp<EarProtectionComponent>(uid, out var selfProt) && selfProt.Protection >= 0.8f)
             return true;
 
-        if (_inventory.TryGetContainerSlotEnumerator(uid, out var slots))
+        if (_inventory.TryGetContainerSlotEnumerator(uid, out var slots, SlotFlags.EARS | SlotFlags.HEAD))
         {
             while (slots.NextItem(out var item, out _))
             {

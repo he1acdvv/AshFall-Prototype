@@ -107,7 +107,7 @@ namespace Content.Shared.Preferences
         /// When spawning into a round what's the preferred spot to spawn.
         /// </summary>
         [DataField]
-        public SpawnPriorityPreference SpawnPriority { get; private set; } = SpawnPriorityPreference.None;
+        public SpawnPriorityPreference SpawnPriority { get; private set; } = SpawnPriorityPreference.Cryosleep;
 
         /// <summary>
         /// <see cref="_jobPriorities"/>
@@ -724,13 +724,7 @@ namespace Content.Shared.Preferences
                 _ => PreferenceUnavailableMode.StayInLobby // Invalid enum values.
             };
 
-            var spawnPriority = SpawnPriority switch
-            {
-                SpawnPriorityPreference.None => SpawnPriorityPreference.None,
-                SpawnPriorityPreference.Arrivals => SpawnPriorityPreference.Arrivals,
-                SpawnPriorityPreference.Cryosleep => SpawnPriorityPreference.Cryosleep,
-                _ => SpawnPriorityPreference.None // Invalid enum values.
-            };
+            var spawnPriority = SpawnPriorityPreference.Cryosleep;
 
             var priorities = new Dictionary<ProtoId<JobPrototype>, JobPriority>(JobPriorities
                 .Where(p => prototypeManager.TryIndex<JobPrototype>(p.Key, out var job) && job.SetPreference && p.Value switch

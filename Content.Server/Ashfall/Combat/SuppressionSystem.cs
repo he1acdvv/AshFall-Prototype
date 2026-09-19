@@ -60,6 +60,12 @@ public sealed partial class SuppressionSystem : EntitySystem
         }
     }
 
+    public void AddSuppression(EntityUid uid, float amount)
+    {
+        if (TryComp<SuppressionComponent>(uid, out var comp))
+            AddSuppression(uid, comp, amount);
+    }
+
     public void AddSuppression(EntityUid uid, SuppressionComponent comp, float amount)
     {
         var prevLevel = comp.Level;
