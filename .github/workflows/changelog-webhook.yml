@@ -60,7 +60,7 @@ jobs:
               print("Метка :cl: не найдена. Пропуск.")
               exit(0)
 
-          # Группируем пункты изменений по категориям для удобного чтения
+          # Группируем пункты изменений по категориям с нативными списками Discord
           lines = raw_section.splitlines()
           output_blocks = []
           current_author = None
@@ -76,18 +76,18 @@ jobs:
                   block.append(f":cl: **{current_author}**\n")
 
               labels = [
-                  ("add", "✨ **Добавлено:**"),
-                  ("tweak", "⚙️ **Изменено:**"),
-                  ("fix", "🛠️ **Исправлено:**"),
-                  ("remove", "🗑️ **Удалено:**"),
-                  ("other", "🔹 **Прочее:**")
+                  ("add", "### ✨ Добавлено"),
+                  ("tweak", "### ⚙️ Изменено"),
+                  ("fix", "### 🛠️ Исправлено"),
+                  ("remove", "### 🗑️ Удалено"),
+                  ("other", "### 🔹 Прочее")
               ]
               for key, title in labels:
                   items = categories[key]
                   if items:
                       block.append(title)
                       for item in items:
-                          block.append(f"• {item}")
+                          block.append(f"- {item}")
                       block.append("")
 
               output_blocks.append("\n".join(block).strip())
