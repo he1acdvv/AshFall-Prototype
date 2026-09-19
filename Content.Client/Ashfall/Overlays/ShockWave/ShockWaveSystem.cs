@@ -1,8 +1,9 @@
+using Content.Client.Explosion;
 using Content.Shared.Ashfall.Overlays.ShockWave;
 using Content.Shared.Explosion;
 using Content.Shared.Explosion.Components;
 using Robust.Client.Graphics;
-using Robust.Shared.GameStates;
+using Robust.Shared.Map;
 using Robust.Shared.Timing;
 
 namespace Content.Client.Ashfall.Overlays.ShockWave;
@@ -25,7 +26,8 @@ public sealed partial class ShockWaveSystem : EntitySystem
 
         SubscribeLocalEvent<ShockWaveComponent, ComponentStartup>(OnShockWaveStartup);
         SubscribeLocalEvent<ShockWaveComponent, ComponentRemove>(OnShockWaveRemoved);
-        SubscribeLocalEvent<ExplosionVisualsComponent, ComponentHandleState>(OnExplosionState);
+        SubscribeLocalEvent<ExplosionVisualsTexturesComponent, ComponentStartup>(OnExplosionTexturesStartup);
+        SubscribeLocalEvent<ExplosionVisualsTexturesComponent, ComponentRemove>(OnExplosionTexturesRemove);
     }
 
     public override void Shutdown()
@@ -36,15 +38,19 @@ public sealed partial class ShockWaveSystem : EntitySystem
         base.Shutdown();
     }
 
-    private void OnExplosionState(EntityUid uid, ExplosionVisualsComponent comp, ref ComponentHandleState args)
+    private void OnExplosionTexturesStartup(EntityUid uid, ExplosionVisualsTexturesComponent comp, ComponentStartup args)
     {
-        if (args.Current is not ExplosionVisualsState state)
-            return;
-
-        if (state.Epicenter != Robust.Shared.Map.MapCoordinates.Nullspace && _spawnedForExplosion.Add(uid))
+        if (TryComp<ExplosionVisualsComponent>(uid, out var visuals) &&
+            visuals.Epicenter != MapCoordinates.Nullspace &&
+            _spawnedForExplosion.Add(uid))
         {
-            Spawn("AshfallEffectShockWave", state.Epicenter);
+            Spawn("AshfallEffectShockWave", visuals.Epicenter);
         }
+    }
+
+    private void OnExplosionTexturesRemove(EntityUid uid, ExplosionVisualsTexturesComponent comp, ComponentRemove args)
+    {
+        _spawnedForExplosion.Remove(uid);
     }
 
     private void OnShockWaveStartup(Entity<ShockWaveComponent> ent, ref ComponentStartup args)
