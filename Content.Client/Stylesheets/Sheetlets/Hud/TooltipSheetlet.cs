@@ -56,6 +56,10 @@ public sealed class TooltipSheetlet<T> : Sheetlet<T> where T: PalettedStylesheet
                 .ParentOf(E<RichTextLabel>().Class("bubbleContent"))
                 .Prop(Label.StylePropertyFont, sheet.BaseFont.GetFont(12, FontKind.Italic)),
             E<PanelContainer>()
+                .Class("speechBox", "whisperBox")
+                .ParentOf(E<BoxContainer>().ParentOf(E<RichTextLabel>().Class("bubbleContent")))
+                .Prop(Label.StylePropertyFont, sheet.BaseFont.GetFont(12, FontKind.Italic)),
+            E<PanelContainer>()
                 .Class("speechBox", "emoteBox")
                 .ParentOf(E<RichTextLabel>().Class("bubbleContent"))
                 .Prop(Label.StylePropertyFont, sheet.BaseFont.GetFont(12, FontKind.Italic)),
@@ -67,11 +71,19 @@ public sealed class TooltipSheetlet<T> : Sheetlet<T> where T: PalettedStylesheet
                 .ParentOf(E<RichTextLabel>().Class("bubbleContent"))
                 .Prop(Label.StylePropertyFont, sheet.BaseFont.GetFont(16, FontKind.Bold)),
             E<PanelContainer>()
+                .Class("speechBox", "commanderSpeech")
+                .ParentOf(E<BoxContainer>().ParentOf(E<RichTextLabel>().Class("bubbleContent")))
+                .Prop(Label.StylePropertyFont, sheet.BaseFont.GetFont(16, FontKind.Bold)),
+            E<PanelContainer>()
                 .Class("speechBox", "megaphoneSpeech")
                 .Panel(tooltipBox),
             E<PanelContainer>()
                 .Class("speechBox", "megaphoneSpeech")
                 .ParentOf(E<RichTextLabel>().Class("bubbleContent"))
+                .Prop(Label.StylePropertyFont, sheet.BaseFont.GetFont(20, FontKind.Bold)),
+            E<PanelContainer>()
+                .Class("speechBox", "megaphoneSpeech")
+                .ParentOf(E<BoxContainer>().ParentOf(E<RichTextLabel>().Class("bubbleContent")))
                 .Prop(Label.StylePropertyFont, sheet.BaseFont.GetFont(20, FontKind.Bold)),
         ];
     }

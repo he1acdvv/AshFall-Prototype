@@ -12,3 +12,6 @@ chat-emote-msg-tremble = мелко дрожит.
 
 chat-emote-name-tail-wag = Вилять хвостом
 chat-emote-msg-tail-wag = виляет хвостом.
+
+chat-emote-name-tail-stop = Перестать вилять хвостом
+chat-emote-msg-tail-stop = перестает вилять хвостом.

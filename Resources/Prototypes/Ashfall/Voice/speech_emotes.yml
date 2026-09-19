@@ -100,3 +100,15 @@
   - wags
   - виляет хвостом
   - виляет
+
+- type: emote
+  id: TailStop
+  name: chat-emote-name-tail-stop
+  category: Hands
+  chatMessages: ["chat-emote-msg-tail-stop"]
+  chatTriggers:
+  - stop wag
+  - stop wagging
+  - stopwag
+  - перестает вилять хвостом
+  - прекращает вилять хвостом

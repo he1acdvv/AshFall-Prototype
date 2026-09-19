@@ -327,19 +327,6 @@ namespace Content.Client.Chat.UI
 
             if (!ConfigManager.GetCVar(CCVars.ChatEnableFancyBubbles))
             {
-                var container = new BoxContainer { Orientation = BoxContainer.LayoutOrientation.Horizontal };
-                if (TryGetLanguageIcon(message, out var iconTexture))
-                {
-                    var textureRect = new TextureRect
-                    {
-                        Texture = iconTexture,
-                        TextureScale = Vector2.One * 0.5f,
-                        VerticalAlignment = VAlignment.Center,
-                        Margin = new Thickness(0, 0, 4, 0)
-                    };
-                    container.AddChild(textureRect);
-                }
-
                 var label = new RichTextLabel
                 {
                     MaxWidth = SpeechMaxWidth,
@@ -348,12 +335,27 @@ namespace Content.Client.Chat.UI
                 };
 
                 label.SetMessage(ExtractAndFormatSpeechSubstring(message, "BubbleContent", fontColor));
-                container.AddChild(label);
+
+                Control content = label;
+                if (TryGetLanguageIcon(message, out var iconTexture))
+                {
+                    var container = new BoxContainer { Orientation = BoxContainer.LayoutOrientation.Horizontal };
+                    var textureRect = new TextureRect
+                    {
+                        Texture = iconTexture,
+                        TextureScale = Vector2.One * 0.5f,
+                        VerticalAlignment = VAlignment.Center,
+                        Margin = new Thickness(0, 0, 4, 0)
+                    };
+                    container.AddChild(textureRect);
+                    container.AddChild(label);
+                    content = container;
+                }
 
                 var unfanciedPanel = new PanelContainer
                 {
                     StyleClasses = { "speechBox", speechStyleClass },
-                    Children = { container },
+                    Children = { content },
                     ModulateSelfOverride = Color.White.WithAlpha(ConfigManager.GetCVar(CCVars.SpeechBubbleBackgroundOpacity)),
                 };
                 return unfanciedPanel;

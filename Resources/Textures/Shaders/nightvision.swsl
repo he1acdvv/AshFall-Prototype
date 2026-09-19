@@ -47,7 +47,7 @@ void fragment()
     if (noise_amount > 0.001)
     {
         lowp float noise = zRandom(UV + sin(TIME / 10.0)).x * noise_amount;
-        finalColor += mix(finalColor, finalColor * noise, noise) * noise_multiplier * 0.5;
+        finalColor += finalColor * noise * noise_multiplier * 0.5;
     }
 
     COLOR = vec4(finalColor, texColor.a);

@@ -32,7 +32,7 @@ public sealed partial class TracerSystem : EntitySystem
     private void OnTracerStart(Entity<TracerComponent> ent, ref ComponentStartup args)
     {
         var xform = Transform(ent);
-        var pos = xform.Coordinates.Position;
+        var pos = _transform.GetWorldPosition(xform);
 
         ent.Comp.Data = new TracerData(
             new List<Vector2> { pos },
@@ -49,10 +49,12 @@ public sealed partial class TracerSystem : EntitySystem
 
         while (query.MoveNext(out var uid, out var tracer, out var xform))
         {
+            var currentPos = _transform.GetWorldPosition(xform);
+
             if (tracer.Data == null)
             {
                 tracer.Data = new TracerData(
-                    new List<Vector2> { xform.Coordinates.Position },
+                    new List<Vector2> { currentPos },
                     curTime + TimeSpan.FromSeconds(tracer.Lifetime)
                 );
             }
@@ -64,13 +66,28 @@ public sealed partial class TracerSystem : EntitySystem
                 continue;
             }
 
-            var currentPos = xform.Coordinates.Position;
             data.PositionHistory.Add(currentPos);
 
             while (data.PositionHistory.Count > 2 &&
                    GetTrailLength(data.PositionHistory) > tracer.Length)
             {
                 data.PositionHistory.RemoveAt(0);
+            }
+
+            if (data.PositionHistory.Count >= 2)
+            {
+                var trailLen = GetTrailLength(data.PositionHistory);
+                if (trailLen > tracer.Length)
+                {
+                    var excess = trailLen - tracer.Length;
+                    var seg = data.PositionHistory[1] - data.PositionHistory[0];
+                    var segLen = seg.Length();
+                    if (segLen > 0.0001f)
+                    {
+                        var t = MathF.Min(excess / segLen, 1f);
+                        data.PositionHistory[0] = Vector2.Lerp(data.PositionHistory[0], data.PositionHistory[1], t);
+                    }
+                }
             }
         }
     }
@@ -99,23 +116,11 @@ public sealed partial class TracerSystem : EntitySystem
             if (positions.Count < 2)
                 continue;
 
-            var parentPos = Vector2.Zero;
-            var parentRot = Angle.Zero;
-
-            if (xform.ParentUid.IsValid())
-            {
-                var parent = Transform(xform.ParentUid);
-                parentPos = _transform.GetWorldPosition(parent);
-                parentRot = _transform.GetWorldRotation(parent);
-            }
-
             handle.SetTransform(Matrix3x2.Identity);
 
             for (var i = 1; i < positions.Count; i++)
             {
-                var start = parentPos + parentRot.RotateVec(positions[i - 1]);
-                var end = parentPos + parentRot.RotateVec(positions[i]);
-                handle.DrawLine(start, end, tracer.Color);
+                handle.DrawLine(positions[i - 1], positions[i], tracer.Color);
             }
         }
     }
