@@ -36,7 +36,8 @@ public sealed class AshfallCoreSheetlet : Sheetlet<AshfallStylesheet>
         var lineEdit = TexBox("/Textures/Interface/Ashfall/input-sunken.png", 6, 3, patch: 5);
         var windowHeader = TexBox("/Textures/Interface/Ashfall/header-rust.png", 6, 4, patch: 4, tile: true);
         var windowBackground = TexBox("/Textures/Interface/Ashfall/panel-frame.png", 8, 8, patch: 3, tile: true);
-        var tooltipBox = Box(Color.FromHex("#1B1C1E"), AshfallStylesheet.Border, 8, 6);
+        var tooltipBox = TexBox("/Textures/Interface/Nano/tooltip.png", 8, 6, patch: 2);
+        var chatBg = new StyleBoxFlat(Color.FromHex("#25252ADD"));
         var contextMenuBox = Box(Color.FromHex("#151617"), AshfallStylesheet.Border, 2, 2);
         var tabs = Box(AshfallStylesheet.PanelDeep, AshfallStylesheet.Border, 2, 2);
         var monoBold = ResCache.GetFont("/Fonts/RobotoMono/RobotoMono-Bold.ttf", 13);
@@ -80,11 +81,11 @@ public sealed class AshfallCoreSheetlet : Sheetlet<AshfallStylesheet>
             E<PanelContainer>().Class(AshfallStylesheet.LobbyInsetClass).Panel(lobbyInset),
             E<PanelContainer>().Class(AshfallStylesheet.LobbyHeaderClass).Panel(lobbyHeader),
             E<PanelContainer>().Class(AshfallStylesheet.LobbyChatPanelClass).Panel(lobbyChat),
-            // In-game chat log: opaque recessed backing, otherwise the translucent chat window
-            // blends into dark scenes and examine lines appear to float without a box.
+            E<PanelContainer>().Class(StyleNano.StyleClassChatPanel).Panel(chatBg),
             E<OutputPanel>().Class(AshfallStylesheet.ChatLogPanelClass)
-                .Prop(OutputPanel.StylePropertyStyleBox,
-                    TexBox("/Textures/Interface/Ashfall/panel-frame-deep.png", 6, 6, patch: 3, tile: true)),
+                .Prop(OutputPanel.StylePropertyStyleBox, new StyleBoxEmpty()),
+            E<Content.Client.Ashfall.UI.Chat.Controls.CustomOutputPanel>()
+                .Prop(Content.Client.Ashfall.UI.Chat.Controls.CustomOutputPanel.StylePropertyFont, tahoma),
             // Retro-web header strip: warm gradient with an amber underline, tiled 1:1 so the
             // grain never stretches on wide panels.
             E<PanelContainer>().Class(AshfallStylesheet.HeaderPanelClass)

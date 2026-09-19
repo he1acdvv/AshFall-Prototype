@@ -205,7 +205,6 @@ namespace Content.Client.Examine
             _userInterfaceManager.ModalRoot.AddChild(_examineTooltipOpen);
             var panel = new PanelContainer() { Name = "ExaminePopupPanel" };
             panel.AddStyleClass(StyleClassEntityTooltip);
-            panel.ModulateSelfOverride = Color.LightGray.WithAlpha(0.90f);
             _examineTooltipOpen.AddChild(panel);
 
             var vBox = new BoxContainer
@@ -238,8 +237,8 @@ namespace Content.Client.Examine
 
             if (knowTarget)
             {
-                var itemName = FormattedMessage.EscapeText(Identity.Name(target, EntityManager, player));
-                var labelMessage = FormattedMessage.FromMarkupPermissive($"[bold]{itemName}[/bold]");
+                var itemName = Identity.Name(target, EntityManager, player);
+                var labelMessage = FormattedMessage.FromMarkupPermissive($"[bold]{FormattedMessage.EscapeText(itemName)}[/bold]");
                 var label = new RichTextLabel();
                 label.SetMessage(labelMessage);
                 hBox.AddChild(label);

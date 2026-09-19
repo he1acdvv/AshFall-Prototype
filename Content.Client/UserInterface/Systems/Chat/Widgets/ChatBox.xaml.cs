@@ -1,4 +1,5 @@
 using System.Linq;
+using Content.Client.Ashfall.UI.Chat;
 using Content.Client.UserInterface.Systems.Chat.Controls;
 using Content.Shared.Ashfall;
 using Content.Shared.Chat;
@@ -29,12 +30,15 @@ public partial class ChatBox : UIWidget
 
     private readonly ISawmill _sawmill;
     private readonly ChatUIController _controller;
+    private readonly ChatSearchController _searchController;
 
     private string? _lastRawMessage;
     private ChatChannel _lastChannel;
     private int _lastRepeatCount;
 
     public bool Main { get; set; }
+
+    public string SearchFilter { get; private set; } = string.Empty;
 
     public ChatSelectChannel SelectedChannel => ChatInput.ChannelSelector.SelectedChannel;
 
@@ -51,6 +55,11 @@ public partial class ChatBox : UIWidget
         ChatInput.ChannelSelector.OnChannelSelect += OnChannelSelect;
         ChatInput.FilterButton.Popup.OnChannelFilter += OnChannelFilter;
         ChatInput.FilterButton.Popup.OnNewHighlights += OnNewHighlights;
+        ChatInput.OnSearchButtonPressed += ToggleSearch;
+        ChatSearch.OnSearchChanged += OnSearchTextChanged;
+        ChatSearch.OnSearchClosed += CloseSearch;
+
+        _searchController = UserInterfaceManager.GetUIController<ChatSearchController>();
         _controller = UserInterfaceManager.GetUIController<ChatUIController>();
         _controller.MessageAdded += OnMessageAdded;
         _controller.HighlightsUpdated += OnHighlightsUpdated;
@@ -77,24 +86,19 @@ public partial class ChatBox : UIWidget
             return;
         }
 
+        if (!string.IsNullOrWhiteSpace(SearchFilter)
+            && !_searchController.MatchesQuery(msg, SearchFilter))
+        {
+            return;
+        }
+
         if (msg is { Read: false, AudioPath: { } })
             _entManager.System<AudioSystem>().PlayGlobal(msg.AudioPath, Filter.Local(), false, AudioParams.Default.AddVolume(msg.AudioVolume));
 
         msg.Read = true;
 
         var color = msg.MessageColorOverride ?? msg.Channel.TextColor();
-        string wrapped;
-        if (msg.Channel == ChatChannel.Examine)
-        {
-            color = Color.FromHex("#cfd3dc");
-            var lines = msg.WrappedMessage.Split('\n');
-            var formattedLines = string.Join("\n", lines.Select(l => $"[color=#4e5766]>[/color] [color=#cfd3dc]{l}[/color]"));
-            wrapped = formattedLines;
-        }
-        else
-        {
-            wrapped = msg.WrappedMessage;
-        }
+        var wrapped = msg.WrappedMessage;
 
         var coalesce = _cfg.GetCVar(AshfallCCVars.ChatCoalesceIdenticalMessages);
         if (coalesce && _lastRepeatCount > 0 && _lastChannel == msg.Channel && _lastRawMessage == msg.Message && Contents.EntryCount > 0)
@@ -133,6 +137,41 @@ public partial class ChatBox : UIWidget
         }
     }
 
+    public void SetSearchFilter(string filter)
+    {
+        SearchFilter = filter.Trim();
+        Repopulate();
+    }
+
+    private void ToggleSearch()
+    {
+        if (SearchPanel.Visible)
+            CloseSearch();
+        else
+            OpenSearch();
+    }
+
+    private void OpenSearch()
+    {
+        SearchPanel.Visible = true;
+        ChatSearch.FocusSearch();
+    }
+
+    private void CloseSearch()
+    {
+        if (!SearchPanel.Visible)
+            return;
+
+        SearchPanel.Visible = false;
+        ChatSearch.SearchInput.Clear();
+        _searchController.ClearSearch(this);
+    }
+
+    private void OnSearchTextChanged(string query)
+    {
+        _searchController.SetSearch(this, query);
+    }
+
     private void OnChannelFilter(ChatChannel channel, bool active)
     {
         Contents.Clear();
@@ -158,7 +197,7 @@ public partial class ChatBox : UIWidget
     {
         var formatted = new FormattedMessage(3);
         formatted.PushColor(color);
-        formatted.AddMarkupOrThrow(message);
+        formatted.AddMarkupPermissive(message);
         formatted.Pop();
         Contents.AddMessage(formatted, tagsAllowed: null);
     }
@@ -255,5 +294,8 @@ public partial class ChatBox : UIWidget
         ChatInput.Input.OnKeyBindDown -= OnInputKeyBindDown;
         ChatInput.Input.OnTextChanged -= OnTextChanged;
         ChatInput.ChannelSelector.OnChannelSelect -= OnChannelSelect;
+        ChatInput.OnSearchButtonPressed -= ToggleSearch;
+        ChatSearch.OnSearchChanged -= OnSearchTextChanged;
+        ChatSearch.OnSearchClosed -= CloseSearch;
     }
 }

@@ -19,6 +19,7 @@
     enum.HumanoidVisualLayers.Snout:
       limit: 1
       required: true
+      default: [ VeiruMuzzle ]
     enum.HumanoidVisualLayers.SnoutCover:
       limit: 3
       required: false

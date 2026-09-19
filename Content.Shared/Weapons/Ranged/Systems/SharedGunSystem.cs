@@ -461,6 +461,12 @@ public abstract partial class SharedGunSystem : EntitySystem
 
         var ev = new ProjectileShotEvent();
         RaiseLocalEvent(uid, ref ev);
+
+        if (user is { } userUid)
+        {
+            var userEv = new PlayerShotProjectileEvent(uid, userUid);
+            RaiseLocalEvent(ref userEv);
+        }
     }
 
     /// <summary>

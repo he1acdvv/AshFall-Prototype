@@ -23,11 +23,15 @@ using Content.Shared.Decals;
 using Content.Shared.Input;
 using Content.Shared.Radio;
 using Content.Shared.Roles.RoleCodeword;
+using Robust.Client.Audio;
 using Robust.Client.GameObjects;
 using Robust.Client.Graphics;
 using Robust.Client.Input;
 using Robust.Client.Player;
 using Robust.Client.State;
+using Robust.Shared.Audio;
+using Robust.Shared.Audio.Systems;
+using Robust.Shared.Player;
 using Robust.Client.UserInterface;
 using Robust.Client.UserInterface.Controllers;
 using Robust.Client.UserInterface.Controls;
@@ -828,10 +832,19 @@ public sealed partial class ChatUIController : UIController
                 msg.WrappedMessage = SharedChatSystem.InjectTagInsideTag(msg, "Name", "color", GetNameColor(SharedChatSystem.GetStringInsideTag(msg, "Name")));
         }
 
+        var isHighlighted = false;
         // Color any words chosen by the client.
         foreach (var highlight in _highlights)
         {
+            var prev = msg.WrappedMessage;
             msg.WrappedMessage = SharedChatSystem.InjectTagAroundString(msg, highlight, "color", _highlightsColor);
+            if (msg.WrappedMessage != prev)
+                isHighlighted = true;
+        }
+
+        if (isHighlighted && _player.LocalEntity != null && _ent.GetEntity(msg.SenderEntity) != _player.LocalEntity)
+        {
+            _ent.System<AudioSystem>().PlayGlobal(new SoundPathSpecifier("/Audio/Ashfall/UI/ChatHighlight/chat_mention.ogg"), Filter.Local(), false, AudioParams.Default.AddVolume(-4f));
         }
 
         // Color any codewords for minds that have roles that use them

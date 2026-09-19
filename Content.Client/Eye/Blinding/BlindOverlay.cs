@@ -44,21 +44,37 @@ namespace Content.Client.Eye.Blinding
             var playerEntity = _playerManager.LocalSession?.AttachedEntity;
 
             if (playerEntity == null)
+            {
+                if (!_lightManager.Enabled)
+                    _lightManager.Enabled = true;
                 return false;
+            }
 
             if (!_entityManager.TryGetComponent<BlindableComponent>(playerEntity, out var blindComp))
+            {
+                if (!_lightManager.Enabled)
+                    _lightManager.Enabled = true;
                 return false;
+            }
 
             _blindableComponent = blindComp;
 
             var blind = _blindableComponent.IsBlind;
 
-            if (!blind && _blindableComponent.LightSetup) // Turn FOV back on if we can see again
+            if (!blind)
             {
-                _lightManager.Enabled = true;
-                _blindableComponent.LightSetup = false;
-                _blindableComponent.GraceFrame = true;
-                return true;
+                if (_blindableComponent.LightSetup) // Turn FOV back on if we can see again
+                {
+                    _lightManager.Enabled = true;
+                    _blindableComponent.LightSetup = false;
+                    _blindableComponent.GraceFrame = true;
+                    return true;
+                }
+
+                if (!_lightManager.Enabled)
+                    _lightManager.Enabled = true;
+
+                return false;
             }
 
             return blind;

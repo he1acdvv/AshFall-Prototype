@@ -240,3 +240,8 @@ ent-WeaponLightMachineGunL6Worn = L6 SAW
 ent-WeaponEnergyCrossbowWorn = мини-арбалет
     .desc = { ent-WeaponEnergyCrossbow.desc }
     .suffix = Изношенный
+
+# Отдача и выбивание оружия
+ashfall-gun-recoil-dropped = Оружие выбивает из ваших рук от мощной отдачи!
+ashfall-gun-recoil-unwielded = Отдача сбивает двуручный хват!
+ashfall-gun-recoil-push = Вас сильно толкает назад от отдачи!

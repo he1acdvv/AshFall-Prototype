@@ -52,6 +52,7 @@ public sealed partial class BlindingSystem : EntitySystem
         if (_player.LocalEntity == uid)
         {
             _overlayMan.RemoveOverlay(_overlay);
+            _lightManager.Enabled = true;
         }
     }
 

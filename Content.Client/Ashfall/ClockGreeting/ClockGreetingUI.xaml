@@ -1,0 +1,5 @@
+<clock:ClockGreetingUI xmlns="https://spacestation14.io"
+                           xmlns:clock="clr-namespace:Content.Client.Ashfall.ClockGreeting"
+                           Visible="False">
+    <Label Name="Label" Access="Public" Align="Center" />
+</clock:ClockGreetingUI>

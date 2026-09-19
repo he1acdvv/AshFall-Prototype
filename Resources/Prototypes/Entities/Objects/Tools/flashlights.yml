@@ -1,4 +1,4 @@
-﻿- type: entity
+- type: entity
   name: flashlight
   parent: BaseItem
   id: FlashlightLantern
@@ -63,6 +63,7 @@
     lightMask: ConeFlashLightB
     autoRot: true
     radius: 8
+    softness: 2.0
     netsync: false
   - type: Appearance
   - type: StaticPrice

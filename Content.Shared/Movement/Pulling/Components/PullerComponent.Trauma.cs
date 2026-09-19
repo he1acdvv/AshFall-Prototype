@@ -77,4 +77,7 @@ public sealed partial class PullerComponent : Component
 
     [DataField]
     public float ChokeGrabSpeedModifier = 0.4f;
+
+    [ViewVariables]
+    public TimeSpan NextBusyPopup;
 }

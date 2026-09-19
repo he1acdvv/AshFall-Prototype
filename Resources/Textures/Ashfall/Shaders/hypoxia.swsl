@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Ashfall Hypoxia (Suffocation) Post-Processing Shader
+// Activates dynamically when taking asphyxiation damage or suffering oxygen deprivation.
+
+uniform sampler2D SCREEN_TEXTURE;
+uniform highp float HypoxiaIntensity; // 0.0 to 1.0
+
+void fragment() {
+    highp vec2 coord = FRAGCOORD.xy * SCREEN_PIXEL_SIZE.xy;
+    highp vec2 centerOffset = coord - vec2(0.5);
+    highp float aspect = SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x;
+    centerOffset.x *= aspect;
+    highp float dist = length(centerOffset);
+
+    // Choking pulse: breathes between 0.88 and 1.12 of intensity
+    highp float pulse = 1.0 + 0.12 * sin(TIME * 2.8);
+    highp float effectiveIntensity = clamp(HypoxiaIntensity * pulse, 0.0, 1.0);
+
+    // Tunnel vision radius narrows as hypoxia deepens
+    highp float vigRadius = 0.82 - (effectiveIntensity * 0.45);
+    highp float vigSoftness = 0.35 + (effectiveIntensity * 0.15);
+    highp float vignette = 1.0 - smoothstep(vigRadius - vigSoftness, vigRadius, dist);
+
+    highp vec4 baseColor = zTextureSpec(SCREEN_TEXTURE, coord);
+    highp vec3 col = baseColor.rgb;
+
+    // Darken and tint peripheral vision to anoxic cyanotic dark blue/black
+    highp vec3 cyanoticColor = vec3(0.04, 0.06, 0.12);
+    col = mix(cyanoticColor, col, clamp(vignette, 0.0, 1.0));
+
+    // Desaturate slightly at the suffocating edges
+    highp float desat = clamp(effectiveIntensity * 0.5 * (1.0 - vignette), 0.0, 1.0);
+    highp float gray = zGrayscale(col);
+    col = mix(col, vec3(gray), desat);
+
+    COLOR = vec4(col, baseColor.a);
+}

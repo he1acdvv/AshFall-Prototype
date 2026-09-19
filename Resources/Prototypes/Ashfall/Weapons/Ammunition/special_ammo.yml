@@ -524,7 +524,16 @@
 
 # Ammo Boxes
 - type: entity
+  abstract: true
   parent: BaseItem
+  id: BaseAshfallSpecialAmmoBox
+  components:
+  - type: ContainerContainer
+    containers:
+      ballistic-ammo: !type:Container
+
+- type: entity
+  parent: BaseAshfallSpecialAmmoBox
   id: BoxPistolPC
   components:
   - type: BallisticAmmoProvider
@@ -541,7 +550,7 @@
     size: Small
 
 - type: entity
-  parent: BaseItem
+  parent: BaseAshfallSpecialAmmoBox
   id: BoxPistolHP
   components:
   - type: BallisticAmmoProvider
@@ -558,7 +567,7 @@
     size: Small
 
 - type: entity
-  parent: BaseItem
+  parent: BaseAshfallSpecialAmmoBox
   id: BoxRiflePC
   components:
   - type: BallisticAmmoProvider
@@ -575,7 +584,7 @@
     size: Small
 
 - type: entity
-  parent: BaseItem
+  parent: BaseAshfallSpecialAmmoBox
   id: BoxRifleHP
   components:
   - type: BallisticAmmoProvider
@@ -592,7 +601,7 @@
     size: Small
 
 - type: entity
-  parent: BaseItem
+  parent: BaseAshfallSpecialAmmoBox
   id: BoxLightRiflePC
   components:
   - type: BallisticAmmoProvider
@@ -609,7 +618,7 @@
     size: Small
 
 - type: entity
-  parent: BaseItem
+  parent: BaseAshfallSpecialAmmoBox
   id: BoxLightRifleHP
   components:
   - type: BallisticAmmoProvider
@@ -626,7 +635,7 @@
     size: Small
 
 - type: entity
-  parent: BaseItem
+  parent: BaseAshfallSpecialAmmoBox
   id: BoxMagnumPC
   components:
   - type: BallisticAmmoProvider
@@ -643,7 +652,7 @@
     size: Small
 
 - type: entity
-  parent: BaseItem
+  parent: BaseAshfallSpecialAmmoBox
   id: BoxMagnumHP
   components:
   - type: BallisticAmmoProvider
@@ -660,7 +669,7 @@
     size: Small
 
 - type: entity
-  parent: BaseItem
+  parent: BaseAshfallSpecialAmmoBox
   id: BoxShotgunFlechette
   components:
   - type: BallisticAmmoProvider
@@ -680,6 +689,9 @@
   parent: BaseItem
   id: MagazineShotgunFlechette
   components:
+  - type: ContainerContainer
+    containers:
+      ballistic-ammo: !type:Container
   - type: BallisticAmmoProvider
     proto: ShellShotgunFlechette
     capacity: 6

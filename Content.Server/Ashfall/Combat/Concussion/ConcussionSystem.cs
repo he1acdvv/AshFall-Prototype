@@ -9,6 +9,8 @@ using Content.Shared.Flash;
 using Content.Shared.Flash.Components;
 using Content.Shared.Movement.Systems;
 using Content.Shared.Rejuvenate;
+using Content.Shared.Damage;
+using Content.Shared.Damage.Systems;
 using Content.Shared.Speech.Components;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Timing;
@@ -28,6 +30,7 @@ public sealed partial class ConcussionSystem : SharedConcussionSystem
     {
         base.Initialize();
 
+        SubscribeLocalEvent<ConcussionThresholdComponent, DamageChangedEvent>(OnDamageChanged);
         SubscribeLocalEvent<ConcussionThresholdComponent, BeforeExplodeEvent>(OnBeforeExplode);
         SubscribeLocalEvent<ConcussionThresholdComponent, FlashAttemptEvent>(OnFlashAttempt);
         SubscribeLocalEvent<ConcussionThresholdComponent, ConcussionStateChangedEvent>(OnConcussionStateChanged);
@@ -37,6 +40,24 @@ public sealed partial class ConcussionSystem : SharedConcussionSystem
 
         SubscribeLocalEvent<ConcussedComponent, ComponentInit>(OnConcussedInit);
         SubscribeLocalEvent<ConcussedComponent, ComponentShutdown>(OnConcussedShutdown);
+    }
+
+    private void OnDamageChanged(EntityUid uid, ConcussionThresholdComponent comp, DamageChangedEvent args)
+    {
+        if (args.DamageDelta == null)
+            return;
+
+        // Heavy blunt trauma (batons, hammers, impacts) causes concussion shock
+        if (args.DamageDelta.DamageDict.TryGetValue("Blunt", out var blunt) && blunt.Float() >= 15f)
+        {
+            AddConcussionDamage(uid, comp, FixedPoint2.New(blunt.Float() * 1.2f));
+        }
+
+        // Heavy caliber piercing rounds deliver hydraulic/kinetic shock
+        if (args.DamageDelta.DamageDict.TryGetValue("Piercing", out var piercing) && piercing.Float() >= 25f)
+        {
+            AddConcussionDamage(uid, comp, FixedPoint2.New(piercing.Float() * 0.8f));
+        }
     }
 
     private void OnMapInit(EntityUid uid, ConcussionThresholdComponent comp, MapInitEvent args)
@@ -93,7 +114,7 @@ public sealed partial class ConcussionSystem : SharedConcussionSystem
         var concussionDmg = FixedPoint2.New(totalDmg * 1.5f);
         AddConcussionDamage(uid, comp, concussionDmg);
 
-        var deafDuration = TimeSpan.FromSeconds(Math.Clamp(totalDmg * 0.15f, 2f, 15f));
+        var deafDuration = TimeSpan.FromSeconds(Math.Clamp(totalDmg * 0.25f, 15f, 25f));
         _deafness.TryDeafen(uid, deafDuration);
     }
 
@@ -101,7 +122,7 @@ public sealed partial class ConcussionSystem : SharedConcussionSystem
     {
         // Flashbang or flash in close proximity causes head disorientation and deafening
         AddConcussionDamage(uid, comp, FixedPoint2.New(35));
-        _deafness.TryDeafen(uid, TimeSpan.FromSeconds(8));
+        _deafness.TryDeafen(uid, TimeSpan.FromSeconds(20));
     }
 
     private void OnRefreshSpeed(EntityUid uid, ConcussionThresholdComponent comp, RefreshMovementSpeedModifiersEvent args)
