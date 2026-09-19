@@ -66,7 +66,7 @@ public sealed partial class HandheldLightRotationSystem : EntitySystem
             else
             {
                 var factor = MathF.Min(1f, 16.0f * frameTime);
-                currentAngle = Angle.Lerp(currentAngle, targetAngle, factor);
+                currentAngle = Angle.Lerp(currentAngle, targetAngle, factor).Reduced();
             }
 
             _smoothedAngles[uid] = currentAngle;
@@ -87,12 +87,12 @@ public sealed partial class HandheldLightRotationSystem : EntitySystem
             {
                 var mouseScreen = _input.MouseScreenPosition;
                 var mouseWorld = _eye.PixelToMap(mouseScreen);
-                if (mouseWorld.MapId != MapId.Nullspace)
+                var holderCoords = _transform.GetMapCoordinates(localPlayer.Value);
+                if (mouseWorld.MapId != MapId.Nullspace && mouseWorld.MapId == holderCoords.MapId)
                 {
-                    var holderPos = _transform.GetMapCoordinates(localPlayer.Value).Position;
-                    var dir = mouseWorld.Position - holderPos;
+                    var dir = mouseWorld.Position - holderCoords.Position;
                     if (dir.LengthSquared() > 0.01f)
-                        return dir.ToAngle();
+                        return dir.ToWorldAngle();
                 }
             }
 
