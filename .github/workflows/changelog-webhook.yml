@@ -27,147 +27,151 @@ jobs:
           import re
           import urllib.request
 
-          # Цвет полосы карточки Discord Embed (#907036)
-          EMBED_COLOR = 0x907036
+          def main():
+              # Цвет полосы карточки Discord Embed (#907036)
+              EMBED_COLOR = 0x907036
 
-          webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
-          if not webhook_url:
-              print("Секрет DISCORD_CHANGELOG_WEBHOOK не найден или пуст. Пропуск отправки.")
-              exit(0)
-
-          pr_body = os.environ.get("PR_BODY", "")
-          pr_url = os.environ.get("PR_URL", "")
-          pr_title = os.environ.get("PR_TITLE", "")
-          pr_number = os.environ.get("PR_NUMBER", "")
-          pr_author = os.environ.get("PR_AUTHOR", "")
-          pr_author_avatar = os.environ.get("PR_AUTHOR_AVATAR", "")
-
-          # Очищаем от HTML-комментариев (включая закомментированный шаблон)
-          clean_body = re.sub(r"<!--[\s\S]*?-->", "", pr_body)
-
-          # Ищем блок чейнджлога
-          match = re.search(r"(##\s*(?:Чейнджлог|Changelog)[\s\S]*|:cl:[\s\S]*)", clean_body, re.IGNORECASE)
-          if not match:
-              print("Секция чейнджлога не найдена. Пропуск.")
-              exit(0)
-
-          raw_section = match.group(1).strip()
-          m_header = re.match(r"(##\s*(?:Чейнджлог|Changelog)[\s\S]*?)(?=\n##\s+|$)", raw_section, re.IGNORECASE)
-          if m_header:
-              raw_section = m_header.group(1).strip()
-
-          if ":cl:" not in raw_section:
-              print("Метка :cl: не найдена. Пропуск.")
-              exit(0)
-
-          # Группируем пункты изменений по категориям с нативными списками Discord
-          lines = raw_section.splitlines()
-          output_blocks = []
-          current_author = None
-          categories = {"add": [], "tweak": [], "fix": [], "remove": [], "other": []}
-          total_entries = 0
-
-          def flush_author():
-              nonlocal current_author, categories
-              if not current_author and not any(categories.values()):
+              webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+              if not webhook_url:
+                  print("Секрет DISCORD_CHANGELOG_WEBHOOK не найден или пуст. Пропуск отправки.")
                   return
-              block = []
-              if current_author:
-                  block.append(f":cl: **{current_author}**\n")
 
-              labels = [
-                  ("add", "### ✨ Добавлено"),
-                  ("tweak", "### ⚙️ Изменено"),
-                  ("fix", "### 🛠️ Исправлено"),
-                  ("remove", "### 🗑️ Удалено"),
-                  ("other", "### 🔹 Прочее")
-              ]
-              for key, title in labels:
-                  items = categories[key]
-                  if items:
-                      block.append(title)
-                      for item in items:
-                          block.append(f"- {item}")
-                      block.append("")
+              pr_body = os.environ.get("PR_BODY", "")
+              pr_url = os.environ.get("PR_URL", "")
+              pr_title = os.environ.get("PR_TITLE", "")
+              pr_number = os.environ.get("PR_NUMBER", "")
+              pr_author = os.environ.get("PR_AUTHOR", "")
+              pr_author_avatar = os.environ.get("PR_AUTHOR_AVATAR", "")
 
-              output_blocks.append("\n".join(block).strip())
-              categories = {"add": [], "tweak": [], "fix": [], "remove": [], "other": []}
+              # Очищаем от HTML-комментариев (включая закомментированный шаблон)
+              clean_body = re.sub(r"<!--[\s\S]*?-->", "", pr_body)
+
+              # Ищем блок чейнджлога
+              match = re.search(r"(##\s*(?:Чейнджлог|Changelog)[\s\S]*|:cl:[\s\S]*)", clean_body, re.IGNORECASE)
+              if not match:
+                  print("Секция чейнджлога не найдена. Пропуск.")
+                  return
+
+              raw_section = match.group(1).strip()
+              m_header = re.match(r"(##\s*(?:Чейнджлог|Changelog)[\s\S]*?)(?=\n##\s+|$)", raw_section, re.IGNORECASE)
+              if m_header:
+                  raw_section = m_header.group(1).strip()
+
+              if ":cl:" not in raw_section:
+                  print("Метка :cl: не найдена. Пропуск.")
+                  return
+
+              # Группируем пункты изменений по категориям с нативными списками Discord
+              lines = raw_section.splitlines()
+              output_blocks = []
               current_author = None
+              categories = {"add": [], "tweak": [], "fix": [], "remove": [], "other": []}
+              total_entries = 0
 
-          for line in lines:
-              stripped = line.strip()
-              if not stripped or stripped.lower().startswith("##"):
-                  continue
+              def flush_author():
+                  nonlocal current_author, categories
+                  if not current_author and not any(categories.values()):
+                      return
+                  block = []
+                  if current_author:
+                      block.append(f":cl: **{current_author}**\n")
 
-              m_cl = re.match(r"^:cl:\s*(.*)", stripped, re.IGNORECASE)
-              if m_cl:
-                  flush_author()
-                  current_author = m_cl.group(1).strip()
-                  continue
+                  labels = [
+                      ("add", "### ✨ Добавлено"),
+                      ("tweak", "### ⚙️ Изменено"),
+                      ("fix", "### 🛠️ Исправлено"),
+                      ("remove", "### 🗑️ Удалено"),
+                      ("other", "### 🔹 Прочее")
+                  ]
+                  for key, title in labels:
+                      items = categories[key]
+                      if items:
+                          block.append(title)
+                          for item in items:
+                              block.append(f"- {item}")
+                          block.append("")
 
-              m_entry = re.match(r"^[-*]\s*([a-zA-Zа-яА-Я]+)\s*:\s*(.*)", stripped)
-              if m_entry:
-                  tag = m_entry.group(1).lower()
-                  rest = m_entry.group(2).strip()
-                  total_entries += 1
-                  if tag in ("add", "добавлено"):
-                      categories["add"].append(rest)
-                  elif tag in ("tweak", "изменено"):
-                      categories["tweak"].append(rest)
-                  elif tag in ("fix", "исправлено"):
-                      categories["fix"].append(rest)
-                  elif tag in ("remove", "удалено"):
-                      categories["remove"].append(rest)
-                  else:
-                      categories["other"].append(f"**{tag}:** {rest}")
-              elif stripped.startswith(("-", "*")):
-                  categories["other"].append(stripped.lstrip("-* "))
-                  total_entries += 1
-              elif current_author or any(categories.values()):
-                  last_cat = next((k for k in reversed(list(categories.keys())) if categories[k]), None)
-                  if last_cat:
-                      categories[last_cat][-1] += " " + stripped
+                  output_blocks.append("\n".join(block).strip())
+                  categories = {"add": [], "tweak": [], "fix": [], "remove": [], "other": []}
+                  current_author = None
 
-          flush_author()
+              for line in lines:
+                  stripped = line.strip()
+                  if not stripped or stripped.lower().startswith("##"):
+                      continue
 
-          if total_entries == 0:
-              print("В чейнджлоге отсутствуют пункты изменений. Пропуск.")
-              exit(0)
+                  m_cl = re.match(r"^:cl:\s*(.*)", stripped, re.IGNORECASE)
+                  if m_cl:
+                      flush_author()
+                      current_author = m_cl.group(1).strip()
+                      continue
 
-          description = "\n\n".join(output_blocks)
+                  m_entry = re.match(r"^[-*]\s*([a-zA-Zа-яА-Я]+)\s*:\s*(.*)", stripped)
+                  if m_entry:
+                      tag = m_entry.group(1).lower()
+                      rest = m_entry.group(2).strip()
+                      total_entries += 1
+                      if tag in ("add", "добавлено"):
+                          categories["add"].append(rest)
+                      elif tag in ("tweak", "изменено"):
+                          categories["tweak"].append(rest)
+                      elif tag in ("fix", "исправлено"):
+                          categories["fix"].append(rest)
+                      elif tag in ("remove", "удалено"):
+                          categories["remove"].append(rest)
+                      else:
+                          categories["other"].append(f"**{tag}:** {rest}")
+                  elif stripped.startswith(("-", "*")):
+                      categories["other"].append(stripped.lstrip("-* "))
+                      total_entries += 1
+                  elif current_author or any(categories.values()):
+                      last_cat = next((k for k in reversed(list(categories.keys())) if categories[k]), None)
+                      if last_cat:
+                          categories[last_cat][-1] += " " + stripped
 
-          payload = {
-              "embeds": [
-                  {
-                      "title": f"PR #{pr_number}: {pr_title}",
-                      "url": pr_url,
-                      "description": description,
-                      "color": EMBED_COLOR,
-                      "author": {
-                          "name": pr_author,
-                          "icon_url": pr_author_avatar,
-                          "url": f"https://github.com/{pr_author}"
-                      },
-                      "image": {
-                          "url": "https://cdn.discohook.app/transparent/400x1.png"
+              flush_author()
+
+              if total_entries == 0:
+                  print("В чейнджлоге отсутствуют пункты изменений. Пропуск.")
+                  return
+
+              description = "\n\n".join(output_blocks)
+
+              payload = {
+                  "embeds": [
+                      {
+                          "title": f"PR #{pr_number}: {pr_title}",
+                          "url": pr_url,
+                          "description": description,
+                          "color": EMBED_COLOR,
+                          "author": {
+                              "name": pr_author,
+                              "icon_url": pr_author_avatar,
+                              "url": f"https://github.com/{pr_author}"
+                          },
+                          "image": {
+                              "url": "https://cdn.discohook.app/transparent/400x1.png"
+                          }
                       }
-                  }
-              ]
-          }
-
-          req = urllib.request.Request(
-              webhook_url,
-              data=json.dumps(payload).encode("utf-8"),
-              headers={
-                  "Content-Type": "application/json",
-                  "User-Agent": "Ashfall-Webhook-Dispatcher"
+                  ]
               }
-          )
 
-          try:
-              with urllib.request.urlopen(req) as resp:
-                  print(f"Оповещение успешно отправлено! Код ответа: {resp.status}")
-          except Exception as e:
-              print(f"Ошибка при отправке в Discord: {e}")
-              raise e
+              req = urllib.request.Request(
+                  webhook_url,
+                  data=json.dumps(payload).encode("utf-8"),
+                  headers={
+                      "Content-Type": "application/json",
+                      "User-Agent": "Ashfall-Webhook-Dispatcher"
+                  }
+              )
+
+              try:
+                  with urllib.request.urlopen(req) as resp:
+                      print(f"Оповещение успешно отправлено! Код ответа: {resp.status}")
+              except Exception as e:
+                  print(f"Ошибка при отправке в Discord: {e}")
+                  raise e
+
+          if __name__ == "__main__":
+              main()
           PYEOF
