@@ -134,9 +134,7 @@ jobs:
               print("В чейнджлоге отсутствуют пункты изменений. Пропуск.")
               exit(0)
 
-          # Добавляем невидимый расширитель для максимальной ширины карточки в Discord
-          width_spacer = "\u2800" * 45
-          description = f"{'\n\n'.join(output_blocks)}\n{width_spacer}"
+          description = "\n\n".join(output_blocks)
 
           payload = {
               "embeds": [
@@ -149,6 +147,9 @@ jobs:
                           "name": pr_author,
                           "icon_url": pr_author_avatar,
                           "url": f"https://github.com/{pr_author}"
+                      },
+                      "image": {
+                          "url": "https://cdn.discohook.app/transparent/400x1.png"
                       }
                   }
               ]
