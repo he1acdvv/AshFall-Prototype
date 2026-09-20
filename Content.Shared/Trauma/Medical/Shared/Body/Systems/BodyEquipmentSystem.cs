@@ -13,7 +13,7 @@ namespace Content.Medical.Shared.Body;
 
 public sealed partial class BodyEquipmentSystem : EntitySystem
 {
-    [Dependency] private readonly INetManager _net = default!;
+    [Dependency] private INetManager _net = default!;
     [Dependency] private BodyPartSystem _part = default!;
     [Dependency] private InventorySystem _inventory = default!;
     [Dependency] private SharedPopupSystem _popup = default!;
