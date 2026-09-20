@@ -7,11 +7,13 @@ using Content.Shared.IdentityManagement;
 using Content.Shared.Inventory;
 using Content.Shared.Inventory.Events;
 using Content.Shared.Popups;
+using Robust.Shared.Network;
 
 namespace Content.Medical.Shared.Body;
 
 public sealed partial class BodyEquipmentSystem : EntitySystem
 {
+    [Dependency] private readonly INetManager _net = default!;
     [Dependency] private BodyPartSystem _part = default!;
     [Dependency] private InventorySystem _inventory = default!;
     [Dependency] private SharedPopupSystem _popup = default!;
@@ -67,6 +69,9 @@ public sealed partial class BodyEquipmentSystem : EntitySystem
 
     private void OnOrganRemovedFrom(Entity<BodyEquipmentComponent> ent, ref OrganRemovedFromEvent args)
     {
+        if (!_net.IsServer)
+            return;
+
         DropPartItems(ent.Owner, args.Organ);
     }
 
@@ -89,6 +94,9 @@ public sealed partial class BodyEquipmentSystem : EntitySystem
     /// </summary>
     public void DropPartItems(Entity<InventoryComponent?> ent, Entity<BodyPartComponent?> part)
     {
+        if (!_net.IsServer)
+            return;
+
         // don't drop for mobs being deleted, gibbing etc would handle it themselves
         if (!TerminatingOrDeleted(ent) &&
             _inventoryQuery.Resolve(ent, ref ent.Comp) &&
