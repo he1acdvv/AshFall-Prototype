@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using Content.Client.Ashfall.Chat;
 using Content.Client.Chat.Managers;
 using Content.Shared.CCVar;
 using Content.Shared.Chat;
@@ -68,7 +69,7 @@ namespace Content.Client.Chat.UI
         private bool _dead;
 
         public float VerticalOffset { get; set; }
-        private float _verticalOffsetAchieved;
+        protected float VerticalOffsetAchieved;
 
         public Vector2 ContentSize { get; private set; }
 
@@ -77,6 +78,9 @@ namespace Content.Client.Chat.UI
 
         public static SpeechBubble CreateSpeechBubble(SpeechType type, ChatMessage message, EntityUid senderEntity)
         {
+            if (IoCManager.Resolve<IConfigurationManager>().GetCVar(CCVars.ChatEnableRunechatBubbles))
+                return new RunechatSpeechBubble(type, message, senderEntity);
+
             switch (type)
             {
                 case SpeechType.Emote:
@@ -96,7 +100,7 @@ namespace Content.Client.Chat.UI
             }
         }
 
-        public SpeechBubble(ChatMessage message, EntityUid senderEntity, string speechStyleClass, Color? fontColor = null)
+        public SpeechBubble(ChatMessage message, EntityUid senderEntity, string speechStyleClass, Color? fontColor = null, TimeSpan? totalTime = null)
         {
             IoCManager.InjectDependencies(this);
             _senderEntity = senderEntity;
@@ -114,8 +118,8 @@ namespace Content.Client.Chat.UI
 
             bubble.Measure(Vector2Helpers.Infinity);
             ContentSize = bubble.DesiredSize;
-            _verticalOffsetAchieved = -ContentSize.Y;
-            _deathTime = _timing.RealTime + TotalTime;
+            VerticalOffsetAchieved = -ContentSize.Y;
+            _deathTime = _timing.RealTime + (totalTime ?? TotalTime);
         }
 
         protected abstract Control BuildBubble(ChatMessage message, string speechStyleClass, Color? fontColor = null);
@@ -169,13 +173,13 @@ namespace Content.Client.Chat.UI
             }
 
             // Lerp to our new vertical offset if it's been modified.
-            if (MathHelper.CloseToPercent(_verticalOffsetAchieved - VerticalOffset, 0, 0.1))
+            if (MathHelper.CloseToPercent(VerticalOffsetAchieved - VerticalOffset, 0, 0.1))
             {
-                _verticalOffsetAchieved = VerticalOffset;
+                VerticalOffsetAchieved = VerticalOffset;
             }
             else
             {
-                _verticalOffsetAchieved = MathHelper.Lerp(_verticalOffsetAchieved, VerticalOffset, 10 * args.DeltaSeconds);
+                VerticalOffsetAchieved = MathHelper.Lerp(VerticalOffsetAchieved, VerticalOffset, 10 * args.DeltaSeconds);
             }
 
             if (!_entityManager.TryGetComponent<TransformComponent>(_senderEntity, out var xform) || xform.MapID != _eyeManager.CurrentEye.Position.MapId)
@@ -206,13 +210,20 @@ namespace Content.Client.Chat.UI
             var worldPos = _transformSystem.GetWorldPosition(xform) + offset + GetWorldPositionOffset(_senderEntity, xform);
 
             var lowerCenter = _eyeManager.WorldToScreen(worldPos) / UIScale + GetScreenPositionOffset(_senderEntity, xform);
-            var screenPos = lowerCenter - new Vector2(ContentSize.X / 2, ContentSize.Y + _verticalOffsetAchieved);
+            var screenPos = lowerCenter - new Vector2(ContentSize.X / 2, ContentSize.Y + VerticalOffsetAchieved);
             // Round to nearest 0.5
             screenPos = (screenPos * 2).Rounded() / 2;
             LayoutContainer.SetPosition(this, screenPos);
 
-            var height = MathF.Ceiling(MathHelper.Clamp(lowerCenter.Y - screenPos.Y, 0, ContentSize.Y));
-            SetHeight = height;
+            if (!RectClipContent)
+            {
+                SetHeight = ContentSize.Y;
+            }
+            else
+            {
+                var height = MathF.Ceiling(MathHelper.Clamp(lowerCenter.Y - screenPos.Y, 0, ContentSize.Y));
+                SetHeight = height;
+            }
         }
 
         private void Die()

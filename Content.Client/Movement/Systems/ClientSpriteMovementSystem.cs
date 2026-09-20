@@ -11,7 +11,7 @@ namespace Content.Client.Movement.Systems;
 public sealed partial class ClientSpriteMovementSystem : SharedSpriteMovementSystem
 {
     [Dependency] private SpriteSystem _sprite = default!;
-    [Dependency] private EntityQuery<SpriteComponent> _spriteQuery;
+    [Dependency] private EntityQuery<SpriteComponent> _spriteQuery = default!;
 
     protected override void OnSpriteMoveInput(Entity<SpriteMovementComponent> ent, ref SpriteMoveEvent args)
     {

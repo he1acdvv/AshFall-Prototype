@@ -1,8 +1,11 @@
 using System.Numerics;
 using Content.Shared.Ashfall.Animations;
+using Content.Shared.Mobs;
 using Robust.Client.Animations;
 using Robust.Client.GameObjects;
 using Robust.Shared.Animations;
+
+using Content.Shared.Mobs.Components;
 
 namespace Content.Client.Ashfall.Animations;
 
@@ -16,6 +19,36 @@ public sealed partial class EmoteAnimationSystem : SharedEmoteAnimationSystem
     {
         base.Initialize();
         SubscribeLocalEvent<EmoteAnimationComponent, AfterAutoHandleStateEvent>(OnHandleState);
+        SubscribeLocalEvent<EmoteAnimationComponent, MobStateChangedEvent>(OnMobStateChanged);
+        SubscribeLocalEvent<EmoteAnimationComponent, ComponentShutdown>(OnShutdown);
+    }
+
+    private void StopRunningAnimation(EntityUid uid)
+    {
+        if (_animationPlayer.HasRunningAnimation(uid, EmoteAnimKey))
+        {
+            _animationPlayer.Stop(uid, EmoteAnimKey);
+            if (TryComp<SpriteComponent>(uid, out var sprite))
+            {
+                sprite.Offset = Vector2.Zero;
+                sprite.Rotation = Angle.Zero;
+            }
+        }
+    }
+
+    private void OnMobStateChanged(Entity<EmoteAnimationComponent> ent, ref MobStateChangedEvent args)
+    {
+        if (args.NewMobState != MobState.Alive)
+        {
+            StopRunningAnimation(ent.Owner);
+            PlayEmoteTail(ent.Owner, false);
+        }
+    }
+
+    private void OnShutdown(Entity<EmoteAnimationComponent> ent, ref ComponentShutdown args)
+    {
+        StopRunningAnimation(ent.Owner);
+        PlayEmoteTail(ent.Owner, false);
     }
 
     private void OnHandleState(Entity<EmoteAnimationComponent> ent, ref AfterAutoHandleStateEvent args)
@@ -24,6 +57,9 @@ public sealed partial class EmoteAnimationSystem : SharedEmoteAnimationSystem
             return;
 
         ent.Comp.LastClientAnimationIndex = ent.Comp.CurAnimationIndex;
+
+        if (TryComp<MobStateComponent>(ent.Owner, out var mobState) && mobState.CurrentState != MobState.Alive)
+            return;
 
         switch (ent.Comp.AnimationId)
         {
@@ -87,6 +123,10 @@ public sealed partial class EmoteAnimationSystem : SharedEmoteAnimationSystem
         if (_animationPlayer.HasRunningAnimation(uid, EmoteAnimKey))
             return;
 
+        var baseOffset = Vector2.Zero;
+        if (TryComp<SpriteComponent>(uid, out var sprite))
+            baseOffset = sprite.Offset;
+
         var anim = new Animation
         {
             Length = TimeSpan.FromMilliseconds(250),
@@ -99,9 +139,9 @@ public sealed partial class EmoteAnimationSystem : SharedEmoteAnimationSystem
                     InterpolationMode = AnimationInterpolationMode.Cubic,
                     KeyFrames =
                     {
-                        new AnimationTrackProperty.KeyFrame(Vector2.Zero, 0f),
-                        new AnimationTrackProperty.KeyFrame(new Vector2(0, 0.65f), 0.125f),
-                        new AnimationTrackProperty.KeyFrame(Vector2.Zero, 0.25f),
+                        new AnimationTrackProperty.KeyFrame(baseOffset, 0f),
+                        new AnimationTrackProperty.KeyFrame(baseOffset + new Vector2(0, 0.65f), 0.125f),
+                        new AnimationTrackProperty.KeyFrame(baseOffset, 0.25f),
                     }
                 }
             }
@@ -147,6 +187,10 @@ public sealed partial class EmoteAnimationSystem : SharedEmoteAnimationSystem
         if (_animationPlayer.HasRunningAnimation(uid, EmoteAnimKey))
             return;
 
+        var baseOffset = Vector2.Zero;
+        if (TryComp<SpriteComponent>(uid, out var sprite))
+            baseOffset = sprite.Offset;
+
         var anim = new Animation
         {
             Length = TimeSpan.FromMilliseconds(400),
@@ -159,14 +203,14 @@ public sealed partial class EmoteAnimationSystem : SharedEmoteAnimationSystem
                     InterpolationMode = AnimationInterpolationMode.Linear,
                     KeyFrames =
                     {
-                        new AnimationTrackProperty.KeyFrame(Vector2.Zero, 0f),
-                        new AnimationTrackProperty.KeyFrame(new Vector2(-0.06f, 0), 0.05f),
-                        new AnimationTrackProperty.KeyFrame(new Vector2(0.06f, 0), 0.10f),
-                        new AnimationTrackProperty.KeyFrame(new Vector2(-0.05f, 0), 0.15f),
-                        new AnimationTrackProperty.KeyFrame(new Vector2(0.05f, 0), 0.20f),
-                        new AnimationTrackProperty.KeyFrame(new Vector2(-0.03f, 0), 0.25f),
-                        new AnimationTrackProperty.KeyFrame(new Vector2(0.03f, 0), 0.30f),
-                        new AnimationTrackProperty.KeyFrame(Vector2.Zero, 0.40f),
+                        new AnimationTrackProperty.KeyFrame(baseOffset, 0f),
+                        new AnimationTrackProperty.KeyFrame(baseOffset + new Vector2(-0.06f, 0), 0.05f),
+                        new AnimationTrackProperty.KeyFrame(baseOffset + new Vector2(0.06f, 0), 0.10f),
+                        new AnimationTrackProperty.KeyFrame(baseOffset + new Vector2(-0.05f, 0), 0.15f),
+                        new AnimationTrackProperty.KeyFrame(baseOffset + new Vector2(0.05f, 0), 0.20f),
+                        new AnimationTrackProperty.KeyFrame(baseOffset + new Vector2(-0.03f, 0), 0.25f),
+                        new AnimationTrackProperty.KeyFrame(baseOffset + new Vector2(0.03f, 0), 0.30f),
+                        new AnimationTrackProperty.KeyFrame(baseOffset, 0.40f),
                     }
                 }
             }

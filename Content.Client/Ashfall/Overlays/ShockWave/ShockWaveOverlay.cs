@@ -45,7 +45,7 @@ public sealed partial class ShockWaveOverlay : Overlay
 
     protected override bool BeforeDraw(in OverlayDrawArgs args)
     {
-        if (args.Viewport.Eye == null || ScreenTexture == null)
+        if (args.Viewport.Eye == null)
             return false;
 
         if (_xformSystem is null && !_entMan.TrySystem(out _xformSystem))
@@ -53,14 +53,13 @@ public sealed partial class ShockWaveOverlay : Overlay
 
         _currentCount = 0;
 
-        _cached.RemoveAll(entry => (float)(_timing.CurTime - entry.Instance.InitTime).TotalSeconds > entry.Instance.FadeTime);
+        _cached.RemoveAll(entry => (float)(_timing.RealTime - entry.Instance.InitTime).TotalSeconds > entry.Instance.FadeTime || !_entMan.EntityExists(entry.Entity));
 
         foreach (var (entityUid, distortion) in _cached)
         {
-            if (!_entMan.EntityExists(entityUid))
+            if (!_entMan.TryGetComponent<TransformComponent>(entityUid, out var xform))
                 continue;
 
-            var xform = _entMan.GetComponent<TransformComponent>(entityUid);
             if (xform.MapID != args.MapId)
                 continue;
 
@@ -70,7 +69,7 @@ public sealed partial class ShockWaveOverlay : Overlay
             tempCoords.Y = 1 - tempCoords.Y / args.Viewport.Size.Y;
             tempCoords.X /= args.Viewport.Size.X;
 
-            var time = (float)(_timing.CurTime - distortion.InitTime).TotalSeconds;
+            var time = Math.Max(0f, (float)(_timing.RealTime - distortion.InitTime).TotalSeconds);
             var fade = 1f - Math.Clamp(time / distortion.FadeTime, 0f, 1f);
 
             var i = _currentCount;
@@ -105,6 +104,7 @@ public sealed partial class ShockWaveOverlay : Overlay
         _shader.SetParameter("renderScale", args.Viewport.RenderScale * args.Viewport.Eye.Scale);
 
         var worldHandle = args.WorldHandle;
+        worldHandle.SetTransform(Matrix3x2.Identity);
         worldHandle.UseShader(_shader);
         worldHandle.DrawRect(args.WorldBounds, Color.White);
         worldHandle.UseShader(null);
@@ -118,8 +118,14 @@ public sealed partial class ShockWaveOverlay : Overlay
             WaveStrength = ent.Comp.WaveStrength,
             DownScale = ent.Comp.DownScale,
             FadeTime = ent.Comp.FadeTime,
-            InitTime = ent.Comp.InitTime == TimeSpan.Zero ? _timing.CurTime : ent.Comp.InitTime
+            InitTime = ent.Comp.InitTime == TimeSpan.Zero ? _timing.RealTime : ent.Comp.InitTime
         }));
+    }
+
+    public void Clear()
+    {
+        _cached.Clear();
+        _currentCount = 0;
     }
 
     private struct InnerShaderInstance

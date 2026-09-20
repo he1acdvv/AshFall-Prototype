@@ -20,21 +20,27 @@ public partial class SharedDeafnessSystem : EntitySystem
         base.Initialize();
     }
 
-    public bool HasEarProtection(EntityUid uid)
+    public float GetEarProtection(EntityUid uid)
     {
-        if (TryComp<EarProtectionComponent>(uid, out var selfProt) && selfProt.Protection >= 0.8f)
-            return true;
+        var maxProt = 0f;
+        if (TryComp<EarProtectionComponent>(uid, out var selfProt))
+            maxProt = MathF.Max(maxProt, selfProt.Protection);
 
         if (_inventory.TryGetContainerSlotEnumerator(uid, out var slots, SlotFlags.EARS | SlotFlags.HEAD))
         {
             while (slots.NextItem(out var item, out _))
             {
-                if (TryComp<EarProtectionComponent>(item, out var prot) && prot.Protection >= 0.8f)
-                    return true;
+                if (TryComp<EarProtectionComponent>(item, out var prot))
+                    maxProt = MathF.Max(maxProt, prot.Protection);
             }
         }
 
-        return false;
+        return maxProt;
+    }
+
+    public bool HasEarProtection(EntityUid uid)
+    {
+        return GetEarProtection(uid) >= 0.8f;
     }
 
     public bool TryDeafen(EntityUid uid, TimeSpan duration, bool ignoreProtection = false, bool showPopup = true)

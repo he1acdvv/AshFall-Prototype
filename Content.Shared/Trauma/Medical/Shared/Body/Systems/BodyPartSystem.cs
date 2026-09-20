@@ -6,7 +6,8 @@ using Content.Shared.Chemistry.Reagent;
 using Content.Shared.FixedPoint;
 using Content.Shared.Fluids;
 using Content.Shared.Gibbing;
-using Content.Shared.Throwing;
+using Content.Medical.Common.Wounds;
+using Content.Medical.Shared.Wounds;
 using Robust.Shared.Audio;
 using Robust.Shared.Audio.Systems;
 using Robust.Shared.Containers;
@@ -22,12 +23,11 @@ public sealed partial class BodyPartSystem : CommonBodyPartSystem
 {
     [Dependency] private BodySystem _body = default!;
     [Dependency] private BodyCacheSystem _cache = default!;
+    [Dependency] private OrganRelationSystem _organRelation = default!;
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private SharedAudioSystem _audio = default!;
     [Dependency] private SharedContainerSystem _container = default!;
     [Dependency] private SharedPuddleSystem _puddle = default!;
-    [Dependency] private SharedTransformSystem _transform = default!;
-    [Dependency] private ThrowingSystem _throwing = default!;
     [Dependency] private EntityQuery<BodyPartComponent> _query = default!;
     [Dependency] private EntityQuery<ChildOrganComponent> _childQuery = default!;
     [Dependency] private EntityQuery<OrganComponent> _organQuery = default!;
@@ -42,6 +42,7 @@ public sealed partial class BodyPartSystem : CommonBodyPartSystem
         SubscribeLocalEvent<BodyPartComponent, OrganGotInsertedEvent>(OnPartInserted);
         SubscribeLocalEvent<BodyPartComponent, OrganGotRemovedEvent>(OnPartRemoved);
         SubscribeLocalEvent<BodyPartComponent, BeingGibbedEvent>(OnBeingGibbed);
+        SubscribeLocalEvent<BodyPartComponent, BodyRelayedEvent<BeingGibbedEvent>>(OnBodyRelayedBeingGibbed);
     }
 
     private void OnPartInserted(Entity<BodyPartComponent> ent, ref OrganGotInsertedEvent args)
@@ -64,6 +65,9 @@ public sealed partial class BodyPartSystem : CommonBodyPartSystem
             if (!_container.Remove(organ, container))
                 Log.Error($"Organ {ToPrettyString(organ)} got stuck inside of {ToPrettyString(ent)} after being inserted into {ToPrettyString(args.Target)}");
         }
+
+        // need to mark the part so it renders!
+        Dirty(ent);
     }
 
     private void OnPartRemoved(Entity<BodyPartComponent> ent, ref OrganGotRemovedEvent args)
@@ -87,8 +91,9 @@ public sealed partial class BodyPartSystem : CommonBodyPartSystem
         var container = EnsureSeveredOrgansContainer(ent);
         foreach (var (category, organ) in ent.Comp.Children.ToArray())
         {
+            _body.RemoveOrgan(body, organ);
             // slot has an organ so try to put it in the container
-            if (!_container.Insert(organ, container))
+            if (!_container.Insert(organ, container, force: true))
             {
                 // probably from failing to be removed, suspicious
                 Log.Error($"Failed to store {ToPrettyString(ent)}'s {category} organ {ToPrettyString(organ)}!");
@@ -99,48 +104,98 @@ public sealed partial class BodyPartSystem : CommonBodyPartSystem
 
     private void OnBeingGibbed(Entity<BodyPartComponent> ent, ref BeingGibbedEvent args)
     {
+        SpillBodyPartOrgans(ent, args.Giblets);
+    }
+
+    private void OnBodyRelayedBeingGibbed(Entity<BodyPartComponent> ent, ref BodyRelayedEvent<BeingGibbedEvent> args)
+    {
+        // Only root body parts (like Torso) need to spill when relayed from body;
+        // child limbs will be detached by the root part.
+        if (!HasComp<ChildOrganComponent>(ent))
+            SpillBodyPartOrgans(ent, args.Args.Giblets);
+    }
+
+    private void SpillBodyPartOrgans(Entity<BodyPartComponent> ent, HashSet<EntityUid> giblets)
+    {
         var organsToSpill = new List<EntityUid>();
 
         if (GetSeveredOrgansContainer(ent.AsNullable()) is {} container)
         {
-            foreach (var organ in container.ContainedEntities)
+            foreach (var organ in container.ContainedEntities.ToArray())
             {
                 organsToSpill.Add(organ);
             }
         }
+
+        Entity<BodyComponent?>? body = _body.GetBody(ent.Owner) is { } bodyUid ? bodyUid : null;
 
         foreach (var (category, organ) in ent.Comp.Children.ToArray())
         {
             if (Deleted(organ) || organsToSpill.Contains(organ))
                 continue;
 
-            if (_organQuery.TryComp(organ, out var organComp) && organComp.Body is { } body)
+            // If the child is a body part itself (e.g. arm, leg, head attached to torso),
+            // sever it: gather its sub-children into its own container so they survive with the limb.
+            if (_query.TryComp(organ, out var childPartComp))
             {
-                _body.RemoveOrgan(body, organ);
+                if (body != null)
+                {
+                    var subChildren = _organRelation.AllChildren(organ).ToList();
+                    var partContainer = EnsureSeveredOrgansContainer((organ, childPartComp));
+
+                    _body.RemoveOrgan(body.Value, organ);
+
+                    var delimbedEvent = new BodyPartDelimbedEvent(body.Value.Owner, organ, Crude: true);
+                    RaiseLocalEvent(body.Value.Owner, ref delimbedEvent);
+
+                    foreach (var subChild in subChildren)
+                    {
+                        _body.RemoveOrgan(body.Value, subChild.Owner);
+                        // Clear severed container of sub-child parts if any, to avoid nested OnPartInserted
+                        if (_container.Insert(subChild.Owner, partContainer, force: true))
+                        {
+                            if (_body.GetCategory(subChild.Owner) is { } subCat)
+                                childPartComp.Children[subCat] = subChild.Owner;
+                        }
+                    }
+                    DirtyField(organ, childPartComp, nameof(BodyPartComponent.Children));
+                }
+
+                if (TryComp<WoundableComponent>(organ, out var woundable))
+                {
+                    woundable.WoundableSeverity = WoundableSeverity.Severed;
+                    DirtyField(organ, woundable, nameof(WoundableComponent.WoundableSeverity));
+                }
+
+                organsToSpill.Add(organ);
             }
-            organsToSpill.Add(organ);
+            else
+            {
+                // Internal organ without BodyPartComponent (e.g. heart, lungs, etc.)
+                if (body != null && _organQuery.TryComp(organ, out var organComp) && organComp.Body is { })
+                {
+                    _body.RemoveOrgan(body.Value, organ);
+                }
+                organsToSpill.Add(organ);
+            }
         }
+
+        ent.Comp.Children.Clear();
+        DirtyField(ent.Owner, ent.Comp, nameof(BodyPartComponent.Children));
 
         if (organsToSpill.Count == 0)
             return;
 
-        _audio.PlayPvs(GibSound, ent.Owner);
+        var dropTarget = body != null ? body.Value.Owner : ent.Owner;
+        _audio.PlayPvs(GibSound, dropTarget);
 
         var bloodSolution = new Solution();
         bloodSolution.AddReagent(BloodReagent, FixedPoint2.New(15));
-        _puddle.TrySpillAt(ent.Owner, bloodSolution, out _, sound: false);
+        _puddle.TrySpillAt(dropTarget, bloodSolution, out _, sound: false);
 
-        var rand = new System.Random();
         foreach (var organ in organsToSpill)
         {
-            args.Giblets.Add(organ);
-
-            _transform.DropNextTo(organ, ent.Owner);
-
-            var angle = rand.NextSingle() * MathF.PI * 2f;
-            var dir = new System.Numerics.Vector2(MathF.Cos(angle), MathF.Sin(angle));
-            var dist = 1.0f + rand.NextSingle() * 1.5f;
-            _throwing.TryThrow(organ, dir * dist, 1.5f, pushbackRatio: 0.2f);
+            giblets.Add(organ);
         }
     }
 

@@ -15,7 +15,7 @@ public sealed partial class ConcussionThresholdComponent : Component
     public FixedPoint2 AbsoluteCap = FixedPoint2.New(200);
 
     [DataField]
-    public FixedPoint2 HealRate = FixedPoint2.New(1.5f);
+    public FixedPoint2 HealRate = FixedPoint2.New(5.0f);
 
     [DataField]
     public TimeSpan UpdateInterval = TimeSpan.FromSeconds(1);

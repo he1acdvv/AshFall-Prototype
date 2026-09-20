@@ -22,33 +22,48 @@ public sealed partial class SandevistanVisionSystem : EntitySystem
         SubscribeLocalEvent<SandevistanVisionComponent, ComponentShutdown>(OnComponentShutdown);
         SubscribeLocalEvent<SandevistanVisionComponent, LocalPlayerAttachedEvent>(OnPlayerAttached);
         SubscribeLocalEvent<SandevistanVisionComponent, LocalPlayerDetachedEvent>(OnPlayerDetached);
+
+        if (_playerMan.LocalEntity is { Valid: true } player
+            && HasComp<SandevistanVisionComponent>(player)
+            && !_overlayMan.HasOverlay<SandevistanVisionOverlay>())
+        {
+            _overlayMan.AddOverlay(_overlay);
+        }
     }
 
     public override void Shutdown()
     {
-        _overlayMan.RemoveOverlay(_overlay);
+        if (_overlayMan.HasOverlay<SandevistanVisionOverlay>())
+            _overlayMan.RemoveOverlay<SandevistanVisionOverlay>();
         base.Shutdown();
     }
 
     private void OnComponentStartup(Entity<SandevistanVisionComponent> ent, ref ComponentStartup args)
     {
         if (ent.Owner == _playerMan.LocalEntity)
+        {
+            if (_overlayMan.HasOverlay<SandevistanVisionOverlay>())
+                _overlayMan.RemoveOverlay<SandevistanVisionOverlay>();
             _overlayMan.AddOverlay(_overlay);
+        }
     }
 
     private void OnComponentShutdown(Entity<SandevistanVisionComponent> ent, ref ComponentShutdown args)
     {
-        if (ent.Owner == _playerMan.LocalEntity)
-            _overlayMan.RemoveOverlay(_overlay);
+        if (ent.Owner == _playerMan.LocalEntity && _overlayMan.HasOverlay<SandevistanVisionOverlay>())
+            _overlayMan.RemoveOverlay<SandevistanVisionOverlay>();
     }
 
     private void OnPlayerAttached(Entity<SandevistanVisionComponent> ent, ref LocalPlayerAttachedEvent args)
     {
+        if (_overlayMan.HasOverlay<SandevistanVisionOverlay>())
+            _overlayMan.RemoveOverlay<SandevistanVisionOverlay>();
         _overlayMan.AddOverlay(_overlay);
     }
 
     private void OnPlayerDetached(Entity<SandevistanVisionComponent> ent, ref LocalPlayerDetachedEvent args)
     {
-        _overlayMan.RemoveOverlay(_overlay);
+        if (_overlayMan.HasOverlay<SandevistanVisionOverlay>())
+            _overlayMan.RemoveOverlay<SandevistanVisionOverlay>();
     }
 }

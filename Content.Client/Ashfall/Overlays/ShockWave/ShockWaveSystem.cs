@@ -21,19 +21,23 @@ public sealed partial class ShockWaveSystem : EntitySystem
     {
         base.Initialize();
 
+        if (_overlayMan.HasOverlay<ShockWaveOverlay>())
+            _overlayMan.RemoveOverlay<ShockWaveOverlay>();
         _overlay = new ShockWaveOverlay();
         _overlayMan.AddOverlay(_overlay);
 
         SubscribeLocalEvent<ShockWaveComponent, ComponentStartup>(OnShockWaveStartup);
         SubscribeLocalEvent<ShockWaveComponent, ComponentRemove>(OnShockWaveRemoved);
         SubscribeLocalEvent<ExplosionVisualsComponent, ExplosionVisualsStateAppliedEvent>(OnExplosionStateApplied);
+        SubscribeLocalEvent<ExplosionVisualsComponent, ComponentShutdown>(OnExplosionVisualsShutdown);
         SubscribeLocalEvent<ExplosionVisualsTexturesComponent, ComponentStartup>(OnExplosionTexturesStartup);
-        SubscribeLocalEvent<ExplosionVisualsTexturesComponent, ComponentRemove>(OnExplosionTexturesRemove);
+        SubscribeLocalEvent<ExplosionVisualsTexturesComponent, ComponentShutdown>(OnExplosionTexturesShutdown);
     }
 
     public override void Shutdown()
     {
-        _overlayMan.RemoveOverlay(_overlay);
+        _overlay.Clear();
+        _overlayMan.RemoveOverlay<ShockWaveOverlay>();
         _registered.Clear();
         _spawnedForExplosion.Clear();
         base.Shutdown();
@@ -58,7 +62,12 @@ public sealed partial class ShockWaveSystem : EntitySystem
             TrySpawnShockWave(uid, visuals);
     }
 
-    private void OnExplosionTexturesRemove(EntityUid uid, ExplosionVisualsTexturesComponent comp, ComponentRemove args)
+    private void OnExplosionVisualsShutdown(EntityUid uid, ExplosionVisualsComponent comp, ComponentShutdown args)
+    {
+        _spawnedForExplosion.Remove(uid);
+    }
+
+    private void OnExplosionTexturesShutdown(EntityUid uid, ExplosionVisualsTexturesComponent comp, ComponentShutdown args)
     {
         _spawnedForExplosion.Remove(uid);
     }
@@ -69,7 +78,7 @@ public sealed partial class ShockWaveSystem : EntitySystem
             return;
 
         if (ent.Comp.InitTime == TimeSpan.Zero)
-            ent.Comp.InitTime = _timing.CurTime;
+            ent.Comp.InitTime = _timing.RealTime;
 
         _overlay.Register(ent);
     }

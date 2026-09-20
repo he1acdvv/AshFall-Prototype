@@ -1,6 +1,8 @@
+using Content.Shared.Body;
 using Content.Shared.Destructible;
 using Robust.Shared.Audio.Systems;
 using Robust.Shared.Audio;
+using Robust.Shared.Containers;
 using Robust.Shared.Network;
 using Robust.Shared.Physics.Systems;
 using Robust.Shared.Random;
@@ -12,6 +14,7 @@ public sealed partial class GibbingSystem : EntitySystem
     [Dependency] private INetManager _net = default!;
     [Dependency] private IRobustRandom _random = default!;
     [Dependency] private SharedAudioSystem _audio = default!;
+    [Dependency] private SharedContainerSystem _container = default!;
     [Dependency] private SharedDestructibleSystem _destructible = default!;
     [Dependency] private SharedPhysicsSystem _physics = default!;
     [Dependency] private SharedTransformSystem _transform = default!;
@@ -49,9 +52,20 @@ public sealed partial class GibbingSystem : EntitySystem
 
         if (dropGiblets)
         {
+            var dropTarget = ent;
+            while (_container.TryGetContainingContainer(dropTarget, out var container))
+            {
+                if (HasComp<BodyComponent>(container.Owner))
+                {
+                    dropTarget = container.Owner;
+                    continue;
+                }
+                break;
+            }
+
             foreach (var giblet in gibbed)
             {
-                _transform.DropNextTo(giblet, ent);
+                _transform.DropNextTo(giblet, dropTarget);
                 FlingDroppedEntity(giblet);
             }
         }

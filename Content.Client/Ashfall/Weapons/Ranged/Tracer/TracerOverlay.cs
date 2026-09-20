@@ -7,11 +7,12 @@ public sealed class TracerOverlay : Overlay
 {
     private readonly TracerSystem _tracer;
 
-    public override OverlaySpace Space => OverlaySpace.WorldSpaceEntities;
+    public override OverlaySpace Space => OverlaySpace.WorldSpaceBelowFOV;
 
     public TracerOverlay(TracerSystem tracer)
     {
         _tracer = tracer;
+        ZIndex = 10;
         IoCManager.InjectDependencies(this);
     }
 

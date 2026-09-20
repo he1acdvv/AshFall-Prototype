@@ -46,6 +46,9 @@ public sealed partial class SandevistanVisionOverlay : Overlay
             return false;
         }
 
+        if (!_entityManager.TryGetComponent(player, out EyeComponent? eyeComp) || args.Viewport.Eye != eyeComp.Eye)
+            return false;
+
         return base.BeforeDraw(in args);
     }
 
@@ -58,6 +61,9 @@ public sealed partial class SandevistanVisionOverlay : Overlay
         if (player == null || !_entityManager.TryGetComponent<SpriteComponent>(player.Value, out var playerSprite))
             return;
 
+        if (!_entityManager.TryGetComponent<TransformComponent>(player.Value, out var playerXform))
+            return;
+
         var worldHandle = args.WorldHandle;
         var viewport = args.WorldBounds;
         var eye = args.Viewport.Eye;
@@ -68,7 +74,6 @@ public sealed partial class SandevistanVisionOverlay : Overlay
         worldHandle.DrawRect(viewport, Color.White);
         worldHandle.UseShader(null);
 
-        var playerXform = _entityManager.GetComponent<TransformComponent>(player.Value);
         var playerPos = _transformSystem.GetWorldPosition(playerXform);
         var playerRot = _transformSystem.GetWorldRotation(playerXform);
         var curTime = _timing.CurTime;
@@ -94,5 +99,6 @@ public sealed partial class SandevistanVisionOverlay : Overlay
 
         // Render player cleanly on top
         playerSprite.Render(worldHandle, eye.Rotation, playerRot, null, playerPos);
+        worldHandle.SetTransform(Matrix3x2.Identity);
     }
 }
