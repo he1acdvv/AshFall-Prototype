@@ -9,7 +9,7 @@
       entity_storage: !type:AllSelector
         children:
         - !type:NestedSelector
-          tableId: AllSoapsTable
+          tableId: StandardSoapsTable
         - id: MopItem
         - id: MopBucketCubeWrapped
         - id: Bucket
