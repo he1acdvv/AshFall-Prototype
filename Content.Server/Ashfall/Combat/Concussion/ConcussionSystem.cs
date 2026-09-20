@@ -51,7 +51,7 @@ public sealed partial class ConcussionSystem : SharedConcussionSystem
             return;
 
         var helmetProtection = 1.0f;
-        if (_inventory.TryGetSlotEntity(uid, "head", out var headItem) && HasComp<ArmorComponent>(headItem))
+        if (_inventory.TryGetSlotEntity(uid, "head", out var headItem) && HasComp<ConcussionProtectionComponent>(headItem))
         {
             helmetProtection = 0.5f;
         }
@@ -141,13 +141,13 @@ public sealed partial class ConcussionSystem : SharedConcussionSystem
         if (args.Target != uid)
             return;
 
-        if (_deafness.HasEarProtection(uid))
-            return;
-
         var isFlashbang = args.Used is { } used && HasComp<Content.Shared.Trigger.Components.Effects.FlashOnTriggerComponent>(used);
 
         if (isFlashbang)
         {
+            if (_deafness.HasEarProtection(uid))
+                return;
+
             // Flashbang explosive detonation causes acute acoustic shock and disorientation
             AddConcussionDamage(uid, comp, FixedPoint2.New(35));
             _deafness.TryDeafen(uid, TimeSpan.FromSeconds(20));

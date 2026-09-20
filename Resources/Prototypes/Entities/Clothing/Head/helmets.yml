@@ -28,6 +28,8 @@
         Heat: 0.9
   - type: EarProtection
     protection: 0.95
+  - type: ConcussionProtection
+    protection: 0.5
 
 #Security Helmet
 - type: entity

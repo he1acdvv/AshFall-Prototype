@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using Content.Shared.Ashfall.Animations;
 using Content.Shared.Mobs;
@@ -14,6 +15,7 @@ public sealed partial class EmoteAnimationSystem : SharedEmoteAnimationSystem
     [Dependency] private AnimationPlayerSystem _animationPlayer = default!;
 
     private const string EmoteAnimKey = "AshfallEmoteAnimation";
+    private readonly Dictionary<EntityUid, (Vector2 Offset, Angle Rotation)> _savedTransforms = new();
 
     public override void Initialize()
     {
@@ -21,6 +23,19 @@ public sealed partial class EmoteAnimationSystem : SharedEmoteAnimationSystem
         SubscribeLocalEvent<EmoteAnimationComponent, AfterAutoHandleStateEvent>(OnHandleState);
         SubscribeLocalEvent<EmoteAnimationComponent, MobStateChangedEvent>(OnMobStateChanged);
         SubscribeLocalEvent<EmoteAnimationComponent, ComponentShutdown>(OnShutdown);
+        SubscribeLocalEvent<EmoteAnimationComponent, AnimationCompletedEvent>(OnAnimationCompleted);
+    }
+
+    private bool TryStartAnimation(EntityUid uid, [NotNullWhen(true)] out SpriteComponent? sprite)
+    {
+        if (_animationPlayer.HasRunningAnimation(uid, EmoteAnimKey) || !TryComp(uid, out sprite))
+        {
+            sprite = null;
+            return false;
+        }
+
+        _savedTransforms[uid] = (sprite.Offset, sprite.Rotation);
+        return true;
     }
 
     private void StopRunningAnimation(EntityUid uid)
@@ -28,11 +43,27 @@ public sealed partial class EmoteAnimationSystem : SharedEmoteAnimationSystem
         if (_animationPlayer.HasRunningAnimation(uid, EmoteAnimKey))
         {
             _animationPlayer.Stop(uid, EmoteAnimKey);
-            if (TryComp<SpriteComponent>(uid, out var sprite))
+            if (_savedTransforms.Remove(uid, out var saved) && TryComp<SpriteComponent>(uid, out var sprite))
             {
-                sprite.Offset = Vector2.Zero;
-                sprite.Rotation = Angle.Zero;
+                sprite.Offset = saved.Offset;
+                sprite.Rotation = saved.Rotation;
             }
+        }
+        else
+        {
+            _savedTransforms.Remove(uid);
+        }
+    }
+
+    private void OnAnimationCompleted(EntityUid uid, EmoteAnimationComponent comp, AnimationCompletedEvent args)
+    {
+        if (args.Key != EmoteAnimKey)
+            return;
+
+        if (_savedTransforms.Remove(uid, out var saved) && TryComp<SpriteComponent>(uid, out var sprite))
+        {
+            sprite.Offset = saved.Offset;
+            sprite.Rotation = saved.Rotation;
         }
     }
 
@@ -88,12 +119,10 @@ public sealed partial class EmoteAnimationSystem : SharedEmoteAnimationSystem
 
     public void PlayEmoteFlip(EntityUid uid)
     {
-        if (_animationPlayer.HasRunningAnimation(uid, EmoteAnimKey))
+        if (!TryStartAnimation(uid, out var sprite))
             return;
 
-        var baseAngle = Angle.Zero;
-        if (TryComp<SpriteComponent>(uid, out var sprite))
-            baseAngle = sprite.Rotation;
+        var baseAngle = sprite.Rotation;
 
         var anim = new Animation
         {
@@ -120,12 +149,10 @@ public sealed partial class EmoteAnimationSystem : SharedEmoteAnimationSystem
 
     public void PlayEmoteJump(EntityUid uid)
     {
-        if (_animationPlayer.HasRunningAnimation(uid, EmoteAnimKey))
+        if (!TryStartAnimation(uid, out var sprite))
             return;
 
-        var baseOffset = Vector2.Zero;
-        if (TryComp<SpriteComponent>(uid, out var sprite))
-            baseOffset = sprite.Offset;
+        var baseOffset = sprite.Offset;
 
         var anim = new Animation
         {
@@ -152,12 +179,10 @@ public sealed partial class EmoteAnimationSystem : SharedEmoteAnimationSystem
 
     public void PlayEmoteTurn(EntityUid uid)
     {
-        if (_animationPlayer.HasRunningAnimation(uid, EmoteAnimKey))
+        if (!TryStartAnimation(uid, out var sprite))
             return;
 
-        var baseAngle = Angle.Zero;
-        if (TryComp<SpriteComponent>(uid, out var sprite))
-            baseAngle = sprite.Rotation;
+        var baseAngle = sprite.Rotation;
 
         var anim = new Animation
         {
@@ -184,12 +209,10 @@ public sealed partial class EmoteAnimationSystem : SharedEmoteAnimationSystem
 
     public void PlayEmoteTremble(EntityUid uid)
     {
-        if (_animationPlayer.HasRunningAnimation(uid, EmoteAnimKey))
+        if (!TryStartAnimation(uid, out var sprite))
             return;
 
-        var baseOffset = Vector2.Zero;
-        if (TryComp<SpriteComponent>(uid, out var sprite))
-            baseOffset = sprite.Offset;
+        var baseOffset = sprite.Offset;
 
         var anim = new Animation
         {
