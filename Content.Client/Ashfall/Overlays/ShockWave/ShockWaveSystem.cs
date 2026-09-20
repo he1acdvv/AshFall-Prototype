@@ -26,6 +26,7 @@ public sealed partial class ShockWaveSystem : EntitySystem
 
         SubscribeLocalEvent<ShockWaveComponent, ComponentStartup>(OnShockWaveStartup);
         SubscribeLocalEvent<ShockWaveComponent, ComponentRemove>(OnShockWaveRemoved);
+        SubscribeLocalEvent<ExplosionVisualsComponent, ExplosionVisualsStateAppliedEvent>(OnExplosionStateApplied);
         SubscribeLocalEvent<ExplosionVisualsTexturesComponent, ComponentStartup>(OnExplosionTexturesStartup);
         SubscribeLocalEvent<ExplosionVisualsTexturesComponent, ComponentRemove>(OnExplosionTexturesRemove);
     }
@@ -38,14 +39,23 @@ public sealed partial class ShockWaveSystem : EntitySystem
         base.Shutdown();
     }
 
-    private void OnExplosionTexturesStartup(EntityUid uid, ExplosionVisualsTexturesComponent comp, ComponentStartup args)
+    private void TrySpawnShockWave(EntityUid uid, ExplosionVisualsComponent visuals)
     {
-        if (TryComp<ExplosionVisualsComponent>(uid, out var visuals) &&
-            visuals.Epicenter != MapCoordinates.Nullspace &&
-            _spawnedForExplosion.Add(uid))
+        if (visuals.Epicenter != MapCoordinates.Nullspace && _spawnedForExplosion.Add(uid))
         {
             Spawn("AshfallEffectShockWave", visuals.Epicenter);
         }
+    }
+
+    private void OnExplosionStateApplied(EntityUid uid, ExplosionVisualsComponent comp, ref ExplosionVisualsStateAppliedEvent args)
+    {
+        TrySpawnShockWave(uid, comp);
+    }
+
+    private void OnExplosionTexturesStartup(EntityUid uid, ExplosionVisualsTexturesComponent comp, ComponentStartup args)
+    {
+        if (TryComp<ExplosionVisualsComponent>(uid, out var visuals))
+            TrySpawnShockWave(uid, visuals);
     }
 
     private void OnExplosionTexturesRemove(EntityUid uid, ExplosionVisualsTexturesComponent comp, ComponentRemove args)

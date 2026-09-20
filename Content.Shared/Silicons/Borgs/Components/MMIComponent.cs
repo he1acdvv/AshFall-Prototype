@@ -35,7 +35,7 @@ public sealed partial class MMIComponent : Component
     /// The sprite state when the brain inserted doesn't have a mind.
     /// </summary>
     [DataField]
-    public string NoMindState = "mmi_on";
+    public string NoMindState = "mmi_off";
 
     /// <summary>
     /// The sprite state when there is no brain inserted.
