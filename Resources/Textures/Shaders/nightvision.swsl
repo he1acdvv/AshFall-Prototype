@@ -5,15 +5,50 @@ uniform sampler2D SCREEN_TEXTURE;
 uniform highp float noise_amount; // How much animated noise/static to add (0..1).
 uniform highp float noise_multiplier; // Scales the intensity of the added noise.
 
+const highp vec3 coolTint = vec3(0.55, 0.90, 0.70);
+const highp vec3 lumaWeights = vec3(0.299, 0.587, 0.114);
+const highp float CompressStart = 0.55;
+const highp float NightVisionBoost = 2.4;
+const highp float NightVisionThreshold = 0.30;
+const highp float NightVisionLift = 0.035;
+const highp float CompressStrength = 0.65;
+const highp float MaxBrightness = 1.0;
+
 void fragment()
 {
-    highp vec4 color = zTextureSpec(SCREEN_TEXTURE, UV);
+    highp vec4 texColor = zTextureSpec(SCREEN_TEXTURE, UV);
+    highp vec3 finalColor = texColor.rgb;
 
-    // Add some noise for realism.
-    lowp float noise = zRandom(UV + sin(TIME / 10.0)).x * noise_amount;
+    highp float brightness = dot(finalColor, lumaWeights);
+    highp float darkFactor = 1.0 - smoothstep(0.0, NightVisionThreshold, brightness);
 
-    // Blend the generated noise into the image.
-    color.rgb += mix(color.rgb, color.rgb * noise, noise) * noise_multiplier;
+    highp float boost = mix(1.0, NightVisionBoost, darkFactor);
+    finalColor *= boost;
 
-    COLOR = color;
+    finalColor += coolTint * (NightVisionLift * darkFactor);
+
+    highp float lum = dot(finalColor, lumaWeights);
+    highp float over = max(lum - CompressStart, 0.0);
+    highp float compressedOver = over / (1.0 + over * CompressStrength);
+    highp float newLum = (lum - over) + compressedOver;
+    finalColor *= newLum / max(lum, 0.0001);
+
+    highp float peak = max(finalColor.r, max(finalColor.g, finalColor.b));
+    if (peak > MaxBrightness)
+        finalColor *= MaxBrightness / peak;
+
+    highp float afterLum = dot(finalColor, lumaWeights);
+    highp vec3 cool = finalColor * coolTint;
+    highp float coolLum = max(dot(cool, lumaWeights), 0.0001);
+    cool *= afterLum / coolLum;
+    finalColor = mix(finalColor, cool, darkFactor * 0.25);
+
+    // Add noise if enabled
+    if (noise_amount > 0.001)
+    {
+        lowp float noise = zRandom(UV + sin(TIME / 10.0)).x * noise_amount;
+        finalColor += finalColor * noise * noise_multiplier * 0.5;
+    }
+
+    COLOR = vec4(finalColor, texColor.a);
 }

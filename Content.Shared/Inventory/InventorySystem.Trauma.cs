@@ -1,11 +1,13 @@
 using Content.Shared.Random;
 using Robust.Shared.Map;
+using Robust.Shared.Network;
 using Robust.Shared.Timing;
 
 namespace Content.Shared.Inventory;
 
 public partial class InventorySystem : EntitySystem
 {
+    [Dependency] private INetManager _net = default!;
     [Dependency] private RandomHelperSystem _randomHelper = default!;
 
     /// <summary>
@@ -14,6 +16,9 @@ public partial class InventorySystem : EntitySystem
     /// </summary>
     public void DropSlotContents(Entity<InventoryComponent?> ent, string slotName)
     {
+        if (!_net.IsServer)
+            return;
+
         if (!Resolve(ent, ref ent.Comp) || Transform(ent).MapID == MapId.Nullspace)
             return;
 

@@ -1,4 +1,4 @@
-﻿using Robust.Shared.Configuration;
+using Robust.Shared.Configuration;
 
 namespace Content.Shared.CCVar;
 
@@ -53,6 +53,18 @@ public sealed partial class CCVars
             false,
             CVar.CLIENTONLY | CVar.ARCHIVE,
             "Toggles displaying a background under the speaking character's name.");
+
+    public static readonly CVarDef<bool> ChatEnableRunechatBubbles =
+        CVarDef.Create("chat.enable_runechat_bubbles",
+            true,
+            CVar.CLIENTONLY | CVar.ARCHIVE,
+            "Toggles displaying runechat-style text speech bubbles overhead.");
+
+    public static readonly CVarDef<float> ChatRunechatBubbleScale =
+        CVarDef.Create("chat.runechat_bubble_scale",
+            1.0f,
+            CVar.CLIENTONLY | CVar.ARCHIVE,
+            "The scale factor applied to runechat speech bubbles.");
 
     /// <summary>
     ///     A message broadcast to each player that joins the lobby.

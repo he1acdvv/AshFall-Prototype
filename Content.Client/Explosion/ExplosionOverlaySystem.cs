@@ -47,6 +47,9 @@ public sealed partial class ExplosionOverlaySystem : EntitySystem
         component.ExplosionType = state.ExplosionType;
         component.SpaceMatrix = state.SpaceMatrix;
         component.SpaceTileSize = state.SpaceTileSize;
+
+        var ev = new ExplosionVisualsStateAppliedEvent(component);
+        RaiseLocalEvent(uid, ref ev);
     }
 
     private void OnCompRemove(EntityUid uid, ExplosionVisualsComponent component, ComponentRemove args)
@@ -97,3 +100,9 @@ public sealed partial class ExplosionOverlaySystem : EntitySystem
         _overlayMan.RemoveOverlay<ExplosionOverlay>();
     }
 }
+
+/// <summary>
+///     Event raised on an entity with ExplosionVisualsComponent after state has been handled and applied.
+/// </summary>
+[ByRefEvent]
+public readonly record struct ExplosionVisualsStateAppliedEvent(ExplosionVisualsComponent Component);

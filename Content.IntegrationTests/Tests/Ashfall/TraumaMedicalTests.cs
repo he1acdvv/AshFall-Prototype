@@ -22,6 +22,7 @@ using Content.Shared.Damage.Systems;
 using Content.Shared.DoAfter;
 using Content.Shared.Emp;
 using Content.Shared.FixedPoint;
+using Content.Shared.Gibbing;
 using Content.Shared.Hands.Components;
 using Content.Shared.Hands.EntitySystems;
 using Content.Shared.Inventory;
@@ -435,5 +436,60 @@ public sealed class TraumaMedicalTests : GameTest
         Assert.That(SEntMan.HasComponent<AltFireMeleeComponent>(gun), Is.True);
         Assert.That(melee.Damage.DamageDict["Blunt"], Is.GreaterThan(FixedPoint2.Zero));
         Assert.That(melee.BluntStaminaDamageFactor, Is.GreaterThan(FixedPoint2.Zero));
+    }
+
+    [Test]
+    public async Task TorsoGibbingDropsAllLimbs()
+    {
+        var pair = Pair;
+        var server = pair.Server;
+        var map = await pair.CreateTestMap();
+
+        EntityUid human = default;
+        EntityUid torso = default;
+        EntityUid head = default;
+        EntityUid leftArm = default;
+        EntityUid rightArm = default;
+        EntityUid leftLeg = default;
+        EntityUid rightLeg = default;
+        EntityUid leftHand = default;
+        EntityUid rightHand = default;
+        EntityUid leftFoot = default;
+        EntityUid rightFoot = default;
+
+        await server.WaitAssertion(() =>
+        {
+            human = server.EntMan.Spawn("MobHuman", map.MapCoords);
+            var body = server.System<BodySystem>();
+            torso = body.GetOrgan(human, "Torso")!.Value;
+            head = body.GetOrgan(human, "Head")!.Value;
+            leftArm = body.GetOrgan(human, "ArmLeft")!.Value;
+            rightArm = body.GetOrgan(human, "ArmRight")!.Value;
+            leftLeg = body.GetOrgan(human, "LegLeft")!.Value;
+            rightLeg = body.GetOrgan(human, "LegRight")!.Value;
+            leftHand = body.GetOrgan(human, "HandLeft")!.Value;
+            rightHand = body.GetOrgan(human, "HandRight")!.Value;
+            leftFoot = body.GetOrgan(human, "FootLeft")!.Value;
+            rightFoot = body.GetOrgan(human, "FootRight")!.Value;
+
+            server.System<GibbingSystem>().Gib(torso);
+        });
+
+        await pair.RunTicksSync(5);
+
+        await server.WaitAssertion(() =>
+        {
+            Assert.That(server.EntMan.Deleted(torso), Is.True);
+            Assert.That(server.EntMan.Deleted(human), Is.True);
+            Assert.That(server.EntMan.Deleted(head), Is.False, "Head was deleted!");
+            Assert.That(server.EntMan.Deleted(leftArm), Is.False, "Left arm was deleted!");
+            Assert.That(server.EntMan.Deleted(rightArm), Is.False, "Right arm was deleted!");
+            Assert.That(server.EntMan.Deleted(leftLeg), Is.False, "Left leg was deleted!");
+            Assert.That(server.EntMan.Deleted(rightLeg), Is.False, "Right leg was deleted!");
+            Assert.That(server.EntMan.Deleted(leftHand), Is.False, "Left hand was deleted!");
+            Assert.That(server.EntMan.Deleted(rightHand), Is.False, "Right hand was deleted!");
+            Assert.That(server.EntMan.Deleted(leftFoot), Is.False, "Left foot was deleted!");
+            Assert.That(server.EntMan.Deleted(rightFoot), Is.False, "Right foot was deleted!");
+        });
     }
 }

@@ -37,13 +37,16 @@ public sealed partial class LagCompProjectileSystem : EntitySystem
         var query = EntityQueryEnumerator<LagCompProjectileComponent>();
         while (query.MoveNext(out var uid, out var comp))
         {
+            if (Deleted(uid))
+                continue;
+
             if (comp.Targets.Count == 0 || comp.ShooterSession == null)
                 continue;
 
             var pos = _transform.GetMapCoordinates(uid);
             foreach (var target in comp.Targets)
             {
-                if (Deleted(target))
+                if (Deleted(target) || target == comp.Shooter)
                     continue;
 
                 var lagPos = _transform.ToMapCoordinates(_lag.GetCoordinates(target, comp.ShooterSession));
@@ -80,6 +83,9 @@ public sealed partial class LagCompProjectileSystem : EntitySystem
             return;
 
         var target = args.OtherEntity;
+        if (target == ent.Comp.Shooter)
+            return;
+
         if (_lagQuery.HasComp(target))
             ent.Comp.Targets.Add(target);
     }

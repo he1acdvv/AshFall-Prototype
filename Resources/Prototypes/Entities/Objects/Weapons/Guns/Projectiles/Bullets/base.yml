@@ -6,6 +6,7 @@
   description: If you can see this you're probably dead!
   components:
   - type: Sprite
+    drawdepth: Effects
     noRot: false
     sprite: Objects/Weapons/Guns/Projectiles/projectiles2.rsi
     layers:
@@ -45,6 +46,9 @@
       path: /Audio/Weapons/Guns/Hits/bullet_hit.ogg
   - type: TimedDespawn
     lifetime: 10
+  - type: Tracer
+    color: "#FFE082"
+    length: 2.2
 
 - type: entity
   parent: BaseBullet
@@ -103,6 +107,9 @@
     energy: 7.0
   - type: IgniteOnCollide
     fireStacks: 0.25
+  - type: Tracer
+    color: "#FF7043"
+    length: 3.0
 
 - type: entity
   parent: BaseBullet

@@ -1,0 +1,11 @@
+- type: entity
+  id: AshfallEffectShockWave
+  categories: [ HideSpawnMenu ]
+  components:
+  - type: TimedDespawn
+    lifetime: 2.0
+  - type: ShockWave
+  - type: EffectVisuals
+  - type: Tag
+    tags:
+    - HideContextMenu

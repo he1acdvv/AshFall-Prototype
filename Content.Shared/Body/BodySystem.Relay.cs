@@ -1,3 +1,4 @@
+using System.Linq;
 using Content.Shared.Body.Events;
 using Content.Shared.Gibbing;
 using Content.Shared.Humanoid;
@@ -39,9 +40,15 @@ public sealed partial class BodySystem
     [PublicAPI]
     public void RelayEvent<T>(Entity<BodyComponent> ent, ref T args) where T : struct
     {
+        if (ent.Comp.Organs is not { } organs)
+            return;
+
         var ev = new BodyRelayedEvent<T>(ent, args);
-        foreach (var organ in ent.Comp.Organs?.ContainedEntities ?? [])
+        foreach (var organ in organs.ContainedEntities.ToArray())
         {
+            if (Deleted(organ))
+                continue;
+
             RaiseLocalEvent(organ, ref ev);
         }
         args = ev.Args;
@@ -56,9 +63,15 @@ public sealed partial class BodySystem
     [PublicAPI]
     public void RelayEvent<T>(Entity<BodyComponent> ent, T args) where T : class
     {
+        if (ent.Comp.Organs is not { } organs)
+            return;
+
         var ev = new BodyRelayedEvent<T>(ent, args);
-        foreach (var organ in ent.Comp.Organs?.ContainedEntities ?? [])
+        foreach (var organ in organs.ContainedEntities.ToArray())
         {
+            if (Deleted(organ))
+                continue;
+
             RaiseLocalEvent(organ, ref ev);
         }
     }

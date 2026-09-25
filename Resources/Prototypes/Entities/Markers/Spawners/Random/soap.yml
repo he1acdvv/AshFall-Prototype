@@ -16,7 +16,7 @@
         weight: 0.2
 
 - type: entityTable # max size 1x2
-  id: AllSoapsTable
+  id: StandardSoapsTable
   table: !type:GroupSelector
     children:
     - id: SoapNT
@@ -24,6 +24,14 @@
     - id: Soap
     - id: SoapHomemade
     - id: SoapDeluxe
+
+- type: entityTable # max size 1x2
+  id: AllSoapsTable
+  table: !type:GroupSelector
+    children:
+    - !type:NestedSelector
+      tableId: StandardSoapsTable
+      weight: 5
     - !type:GroupSelector # Rare soaps
       weight: 0.02 # 1 in 250
       children:

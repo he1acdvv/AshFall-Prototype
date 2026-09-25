@@ -159,7 +159,6 @@ public sealed class AshfallCharacterGenerator
             "AshfallTraitServiceServiceability",
             "AshfallTraitAgroGreenThumb",
             "AshfallTraitBureaucraticPatience",
-            "Pacifist",
             "LightweightDrunk",
             "Snoring"
         };

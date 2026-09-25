@@ -22,3 +22,8 @@
   id: AshfallSuppression
   kind: source
   path: "/Textures/Ashfall/Shaders/suppression.swsl"
+
+- type: shader
+  id: AshfallSandevistanVision
+  kind: source
+  path: "/Textures/Ashfall/Shaders/sandevistan_vision.swsl"

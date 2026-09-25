@@ -27,6 +27,7 @@
 - type: startingGear
   id: SecurityOfficerGear
   equipment:
+    head: ClothingHeadHelmetBasic
     eyes: ClothingEyesGlassesSecurity
     ears: ClothingHeadsetSecurity
     pocket1: WeaponPistolMk58

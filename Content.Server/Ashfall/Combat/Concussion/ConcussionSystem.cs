@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 using Content.Shared.Alert;
+using Content.Shared.Armor;
 using Content.Shared.Ashfall.Audio;
 using Content.Shared.Ashfall.Combat.Concussion;
 using Content.Shared.Explosion;
@@ -11,6 +12,7 @@ using Content.Shared.Movement.Systems;
 using Content.Shared.Rejuvenate;
 using Content.Shared.Damage;
 using Content.Shared.Damage.Systems;
+using Content.Shared.Inventory;
 using Content.Shared.Speech.Components;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Timing;
@@ -23,6 +25,7 @@ public sealed partial class ConcussionSystem : SharedConcussionSystem
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private AlertsSystem _alertsSystem = default!;
     [Dependency] private SharedDeafnessSystem _deafness = default!;
+    [Dependency] private InventorySystem _inventory = default!;
 
     private static readonly ProtoId<AlertPrototype> ConcussionAlert = "Concussion";
 
@@ -32,7 +35,7 @@ public sealed partial class ConcussionSystem : SharedConcussionSystem
 
         SubscribeLocalEvent<ConcussionThresholdComponent, DamageChangedEvent>(OnDamageChanged);
         SubscribeLocalEvent<ConcussionThresholdComponent, BeforeExplodeEvent>(OnBeforeExplode);
-        SubscribeLocalEvent<ConcussionThresholdComponent, FlashAttemptEvent>(OnFlashAttempt);
+        SubscribeLocalEvent<ConcussionThresholdComponent, AfterFlashedEvent>(OnAfterFlashed);
         SubscribeLocalEvent<ConcussionThresholdComponent, ConcussionStateChangedEvent>(OnConcussionStateChanged);
         SubscribeLocalEvent<ConcussionThresholdComponent, MapInitEvent>(OnMapInit);
         SubscribeLocalEvent<ConcussionThresholdComponent, RejuvenateEvent>(OnRejuvenate);
@@ -47,16 +50,23 @@ public sealed partial class ConcussionSystem : SharedConcussionSystem
         if (args.DamageDelta == null)
             return;
 
+        var helmetProtection = 1.0f;
+        if (_inventory.TryGetSlotEntity(uid, "head", out var headItem) &&
+            TryComp<ConcussionProtectionComponent>(headItem, out var concussionProtection))
+        {
+            helmetProtection = Math.Clamp(1f - concussionProtection.Protection, 0f, 1f);
+        }
+
         // Heavy blunt trauma (batons, hammers, impacts) causes concussion shock
         if (args.DamageDelta.DamageDict.TryGetValue("Blunt", out var blunt) && blunt.Float() >= 15f)
         {
-            AddConcussionDamage(uid, comp, FixedPoint2.New(blunt.Float() * 1.2f));
+            AddConcussionDamage(uid, comp, FixedPoint2.New(blunt.Float() * 1.2f * helmetProtection));
         }
 
         // Heavy caliber piercing rounds deliver hydraulic/kinetic shock
         if (args.DamageDelta.DamageDict.TryGetValue("Piercing", out var piercing) && piercing.Float() >= 25f)
         {
-            AddConcussionDamage(uid, comp, FixedPoint2.New(piercing.Float() * 0.8f));
+            AddConcussionDamage(uid, comp, FixedPoint2.New(piercing.Float() * 0.8f * helmetProtection));
         }
     }
 
@@ -111,18 +121,43 @@ public sealed partial class ConcussionSystem : SharedConcussionSystem
         if (totalDmg <= 0)
             return;
 
-        var concussionDmg = FixedPoint2.New(totalDmg * 1.5f);
-        AddConcussionDamage(uid, comp, concussionDmg);
+        var earProt = _deafness.GetEarProtection(uid);
+        var acousticMultiplier = MathF.Max(0.0f, 1.0f - earProt);
+        var concussionDmg = FixedPoint2.New(totalDmg * 1.5f * acousticMultiplier);
 
-        var deafDuration = TimeSpan.FromSeconds(Math.Clamp(totalDmg * 0.25f, 15f, 25f));
-        _deafness.TryDeafen(uid, deafDuration);
+        if (concussionDmg > 0)
+        {
+            AddConcussionDamage(uid, comp, concussionDmg);
+        }
+
+        if (earProt < 0.8f)
+        {
+            var deafDuration = TimeSpan.FromSeconds(Math.Clamp(totalDmg * 0.25f, 15f, 25f));
+            _deafness.TryDeafen(uid, deafDuration);
+        }
     }
 
-    private void OnFlashAttempt(EntityUid uid, ConcussionThresholdComponent comp, ref FlashAttemptEvent args)
+    private void OnAfterFlashed(EntityUid uid, ConcussionThresholdComponent comp, ref AfterFlashedEvent args)
     {
-        // Flashbang or flash in close proximity causes head disorientation and deafening
-        AddConcussionDamage(uid, comp, FixedPoint2.New(35));
-        _deafness.TryDeafen(uid, TimeSpan.FromSeconds(20));
+        if (args.Target != uid)
+            return;
+
+        var isFlashbang = args.Used is { } used && HasComp<Content.Shared.Trigger.Components.Effects.FlashOnTriggerComponent>(used);
+
+        if (isFlashbang)
+        {
+            if (_deafness.HasEarProtection(uid))
+                return;
+
+            // Flashbang explosive detonation causes acute acoustic shock and disorientation
+            AddConcussionDamage(uid, comp, FixedPoint2.New(35));
+            _deafness.TryDeafen(uid, TimeSpan.FromSeconds(20));
+        }
+        else
+        {
+            // Optical flash causes minor disorientation without permanent acoustic deafness
+            AddConcussionDamage(uid, comp, FixedPoint2.New(10));
+        }
     }
 
     private void OnRefreshSpeed(EntityUid uid, ConcussionThresholdComponent comp, RefreshMovementSpeedModifiersEvent args)

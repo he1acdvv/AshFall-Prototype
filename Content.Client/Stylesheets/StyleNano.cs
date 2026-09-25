@@ -949,11 +949,67 @@ namespace Content.Client.Stylesheets
                 }),
 
                 new StyleRule(new SelectorChild(
+                    new SelectorElement(typeof(PanelContainer), new[] {"speechBox", "whisperBox"}, null, null),
+                    new SelectorChild(
+                        new SelectorElement(typeof(BoxContainer), null, null, null),
+                        new SelectorElement(typeof(RichTextLabel), new[] {"bubbleContent"}, null, null))),
+                    new[]
+                {
+                    new StyleProperty("font", notoSansItalic12),
+                }),
+
+                new StyleRule(new SelectorChild(
                     new SelectorElement(typeof(PanelContainer), new[] {"speechBox", "emoteBox"}, null, null),
                     new SelectorElement(typeof(RichTextLabel), null, null, null)),
                     new[]
                 {
                     new StyleProperty("font", notoSansItalic12),
+                }),
+
+                new StyleRule(new SelectorChild(
+                    new SelectorElement(typeof(PanelContainer), new[] { "speechBox", "commanderSpeech" }, null, null),
+                    new SelectorElement(typeof(RichTextLabel), new[] { "bubbleContent" }, null, null)),
+                    new[]
+                {
+                    new StyleProperty("font", notoSansBold16),
+                }),
+
+                new StyleRule(new SelectorChild(
+                    new SelectorElement(typeof(PanelContainer), new[] { "speechBox", "commanderSpeech" }, null, null),
+                    new SelectorChild(
+                        new SelectorElement(typeof(BoxContainer), null, null, null),
+                        new SelectorElement(typeof(RichTextLabel), new[] { "bubbleContent" }, null, null))),
+                    new[]
+                {
+                    new StyleProperty("font", notoSansBold16),
+                }),
+
+                new StyleRule(new SelectorElement(typeof(PanelContainer), new[] {"speechBox", "commanderSpeech"}, null, null), new[]
+                {
+                    new StyleProperty(PanelContainer.StylePropertyPanel, tooltipBox)
+                }),
+
+                new StyleRule(new SelectorChild(
+                    new SelectorElement(typeof(PanelContainer), new[] { "speechBox", "megaphoneSpeech" }, null, null),
+                    new SelectorElement(typeof(RichTextLabel), new[] { "bubbleContent" }, null, null)),
+                    new[]
+                {
+                    new StyleProperty("font", notoSansBold20),
+                }),
+
+                new StyleRule(new SelectorChild(
+                    new SelectorElement(typeof(PanelContainer), new[] { "speechBox", "megaphoneSpeech" }, null, null),
+                    new SelectorChild(
+                        new SelectorElement(typeof(BoxContainer), null, null, null),
+                        new SelectorElement(typeof(RichTextLabel), new[] { "bubbleContent" }, null, null))),
+                    new[]
+                {
+                    new StyleProperty("font", notoSansBold20),
+                }),
+
+                new StyleRule(new SelectorElement(typeof(PanelContainer), new[] {"speechBox", "megaphoneSpeech"}, null, null), new[]
+                {
+                    new StyleProperty(PanelContainer.StylePropertyPanel, tooltipBox)
                 }),
 
                 new StyleRule(new SelectorElement(typeof(RichTextLabel), new[] {StyleClassLabelKeyText}, null, null), new[]

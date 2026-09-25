@@ -20,7 +20,7 @@ public sealed partial class UnremoveableOrganSystem : EntitySystem
 
         SubscribeLocalEvent<UnremoveableOrganComponent, OrganRemoveAttemptEvent>(OnRemoveAttempt);
         SubscribeLocalEvent<UnremoveableOrganComponent, OrganGotRemovedEvent>(OnRemoved);
-        SubscribeLocalEvent<UnremoveableOrganComponent, BeingGibbedEvent>(OnBeingGibbed);
+        SubscribeLocalEvent<UnremoveableOrganComponent, BeingGibbedEvent>(OnBeingGibbed, after: new[] { typeof(BodyPartSystem) });
     }
 
     private void OnRemoveAttempt(Entity<UnremoveableOrganComponent> ent, ref OrganRemoveAttemptEvent args)
@@ -30,14 +30,18 @@ public sealed partial class UnremoveableOrganSystem : EntitySystem
 
     private void OnRemoved(Entity<UnremoveableOrganComponent> ent, ref OrganGotRemovedEvent args)
     {
-        if (TerminatingOrDeleted(args.Target) || Transform(args.Target).MapID == MapId.Nullspace || _timing.ApplyingState)
+        if (TerminatingOrDeleted(args.Target) || EntityManager.IsQueuedForDeletion(args.Target) || Transform(args.Target).MapID == MapId.Nullspace || _timing.ApplyingState)
             return; // all good if it's being deleted or leaving pvs range
 
         // if you intentionally deleted the root part, please delete the body instead chud
-        if (!TerminatingOrDeleted(ent) && !HasComp<ChildOrganComponent>(ent))
+        if (TerminatingOrDeleted(ent) || EntityManager.IsQueuedForDeletion(ent))
         {
-            Log.Warning($"{ToPrettyString(ent)} was deleted instead of the body, {ToPrettyString(args.Target)}!");
-            PredictedQueueDel(args.Target);
+            if (!HasComp<ChildOrganComponent>(ent))
+            {
+                Log.Warning($"{ToPrettyString(ent)} was deleted instead of the body, {ToPrettyString(args.Target)}!");
+                PredictedQueueDel(args.Target);
+            }
+            return;
         }
 
         Log.Warning($"{ToPrettyString(ent)} somehow got removed from {ToPrettyString(args.Target)}!");
@@ -49,7 +53,7 @@ public sealed partial class UnremoveableOrganSystem : EntitySystem
         if (HasComp<ChildOrganComponent>(ent) || _body.GetBody(ent.Owner) is not {} body)
             return;
 
-        Log.Info($"Root part {ToPrettyString(ent)} was gibbed, gibbing {ToPrettyString(ent)} too!");
+        Log.Info($"Root part {ToPrettyString(ent)} was gibbed, gibbing {ToPrettyString(body)} too!");
         _gibbing.Gib(body);
     }
 }
