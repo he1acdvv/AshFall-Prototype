@@ -51,9 +51,10 @@ public sealed partial class ConcussionSystem : SharedConcussionSystem
             return;
 
         var helmetProtection = 1.0f;
-        if (_inventory.TryGetSlotEntity(uid, "head", out var headItem) && HasComp<ConcussionProtectionComponent>(headItem))
+        if (_inventory.TryGetSlotEntity(uid, "head", out var headItem) &&
+            TryComp<ConcussionProtectionComponent>(headItem, out var concussionProtection))
         {
-            helmetProtection = 0.5f;
+            helmetProtection = Math.Clamp(1f - concussionProtection.Protection, 0f, 1f);
         }
 
         // Heavy blunt trauma (batons, hammers, impacts) causes concussion shock
